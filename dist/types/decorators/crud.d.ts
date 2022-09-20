@@ -1,2 +1,2 @@
-export declare const CRUD: (ctr: Function) => void;
+export declare const CRUD: (ctr: CallableFunction) => void;
 export default CRUD;

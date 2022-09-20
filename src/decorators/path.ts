@@ -1,5 +1,5 @@
 export const Path = (path: string) => {
-    return (ctr: Function) => {
+    return (ctr: CallableFunction) => {
         ctr.prototype.path = path;
     };
 };
