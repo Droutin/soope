@@ -1,8 +1,11 @@
 {
     "name": "soope",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "author": "Roman Vašek",
     "license": "MIT",
+    "repository": {
+        "url": "https://github.com/Droutin/soope"
+    },
     "main": "./dist/cjs/index.js",
     "exports": {
         ".": "./dist/esm/index.js",
