@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Route = void 0;
 const Route = (path, params) => {
-    const decorator = (target, property, descriptor) => {
+    const decorator = (_target, property, descriptor) => {
         descriptor.value = {
             path,
             property,

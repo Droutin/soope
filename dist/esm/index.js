@@ -1,12 +1,11 @@
 import Express from "express";
 import dotenv from "dotenv";
-import { readdirSync } from "fs";
-import Path from "path";
 dotenv.config();
 /**
  * Parts of Core
  */
 import entries from "./utils/entries";
+import scanDir from "./utils/scanDir";
 export const express = Express;
 export const app = express();
 export const router = express.Router();
@@ -17,8 +16,8 @@ export class Core {
         afterStart: undefined,
     };
     dirs = {
-        routes: "src/routes/",
-        middlewares: "src/middlewares",
+        routes: "routes",
+        middlewares: "middlewares",
     };
     middlewares = new Map();
     middlewareQueue = [];
@@ -26,7 +25,9 @@ export class Core {
      * Performance timer
      */
     startTime = 0;
-    constructor() {
+    root;
+    constructor(root) {
+        this.root = root + "/";
         app.use(express.static("public"));
         app.use((req, res, next) => {
             res.removeHeader("Server");
@@ -45,7 +46,7 @@ export class Core {
      * Set dir
      */
     setDir(name, path) {
-        this.dirs[name] = path.endsWith("/") ? path : path + "/";
+        this.dirs[name] = path.endsWith("/") ? path.replace("/", "") : path;
     }
     /**
      * Set dirs
@@ -168,29 +169,6 @@ export class Core {
         app.use(this.errorHandler);
     }
     /**
-     * Scanner for autoimport
-     */
-    scanDir(dir, recurse = false) {
-        if (!recurse) {
-            dir = "./" + dir;
-        }
-        const relativePaths = [];
-        const dirs = readdirSync(dir, {
-            withFileTypes: true,
-        });
-        dirs.forEach((file) => {
-            const absolutePath = Path.resolve(dir, file.name);
-            if (file.isDirectory()) {
-                relativePaths.push(...this.scanDir(absolutePath, true));
-            }
-            else if (absolutePath.endsWith(".ts") || absolutePath.endsWith(".js") || absolutePath.endsWith(".mjs")) {
-                const relativePath = Path.relative(process.cwd(), absolutePath).replaceAll("\\", "/");
-                relativePaths.push(relativePath);
-            }
-        });
-        return relativePaths;
-    }
-    /**
      * Path builder for Router
      */
     buildPath(dir, filePath, endpoint) {
@@ -201,7 +179,7 @@ export class Core {
         let path = pathArray[0];
         if (endpoint)
             path = path.replace(/\/[^/]*$/, endpoint);
-        return "/" + path;
+        return path;
     }
     initRoute(route, path, method = "get") {
         let property;
@@ -241,9 +219,9 @@ export class Core {
      */
     async initRoutes() {
         const usedNames = [];
-        const filePaths = this.scanDir(this.dirs.routes);
+        const filePaths = scanDir(this.root, this.dirs.routes);
         for (const filePath of filePaths) {
-            const { default: Route } = await import(filePath);
+            const { default: Route } = await require(filePath);
             const route = new Route();
             const className = Route.name;
             if (usedNames.includes(className)) {
@@ -281,9 +259,9 @@ export class Core {
      */
     async importMiddlewares() {
         const usedNames = [];
-        const filePaths = this.scanDir(this.dirs.middlewares);
+        const filePaths = scanDir(this.root, this.dirs.middlewares);
         for (const filePath of filePaths) {
-            const { default: Middleware } = await import(filePath);
+            const { default: Middleware } = await require(filePath);
             const className = Middleware.name;
             if (usedNames.includes(className)) {
                 throw new Error(`${className} already in use`);

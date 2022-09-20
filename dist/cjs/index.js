@@ -6,13 +6,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Core = exports.router = exports.app = exports.express = void 0;
 const express_1 = __importDefault(require("express"));
 const dotenv_1 = __importDefault(require("dotenv"));
-const fs_1 = require("fs");
-const path_1 = __importDefault(require("path"));
 dotenv_1.default.config();
 /**
  * Parts of Core
  */
 const entries_1 = __importDefault(require("./utils/entries"));
+const scanDir_1 = __importDefault(require("./utils/scanDir"));
 exports.express = express_1.default;
 exports.app = (0, exports.express)();
 exports.router = exports.express.Router();
@@ -23,8 +22,8 @@ class Core {
         afterStart: undefined,
     };
     dirs = {
-        routes: "src/routes/",
-        middlewares: "src/middlewares",
+        routes: "routes",
+        middlewares: "middlewares",
     };
     middlewares = new Map();
     middlewareQueue = [];
@@ -32,7 +31,9 @@ class Core {
      * Performance timer
      */
     startTime = 0;
-    constructor() {
+    root;
+    constructor(root) {
+        this.root = root + "/";
         exports.app.use(exports.express.static("public"));
         exports.app.use((req, res, next) => {
             res.removeHeader("Server");
@@ -51,7 +52,7 @@ class Core {
      * Set dir
      */
     setDir(name, path) {
-        this.dirs[name] = path.endsWith("/") ? path : path + "/";
+        this.dirs[name] = path.endsWith("/") ? path.replace("/", "") : path;
     }
     /**
      * Set dirs
@@ -174,29 +175,6 @@ class Core {
         exports.app.use(this.errorHandler);
     }
     /**
-     * Scanner for autoimport
-     */
-    scanDir(dir, recurse = false) {
-        if (!recurse) {
-            dir = "./" + dir;
-        }
-        const relativePaths = [];
-        const dirs = (0, fs_1.readdirSync)(dir, {
-            withFileTypes: true,
-        });
-        dirs.forEach((file) => {
-            const absolutePath = path_1.default.resolve(dir, file.name);
-            if (file.isDirectory()) {
-                relativePaths.push(...this.scanDir(absolutePath, true));
-            }
-            else if (absolutePath.endsWith(".ts") || absolutePath.endsWith(".js") || absolutePath.endsWith(".mjs")) {
-                const relativePath = path_1.default.relative(process.cwd(), absolutePath).replaceAll("\\", "/");
-                relativePaths.push(relativePath);
-            }
-        });
-        return relativePaths;
-    }
-    /**
      * Path builder for Router
      */
     buildPath(dir, filePath, endpoint) {
@@ -207,7 +185,7 @@ class Core {
         let path = pathArray[0];
         if (endpoint)
             path = path.replace(/\/[^/]*$/, endpoint);
-        return "/" + path;
+        return path;
     }
     initRoute(route, path, method = "get") {
         let property;
@@ -247,9 +225,9 @@ class Core {
      */
     async initRoutes() {
         const usedNames = [];
-        const filePaths = this.scanDir(this.dirs.routes);
+        const filePaths = (0, scanDir_1.default)(this.root, this.dirs.routes);
         for (const filePath of filePaths) {
-            const { default: Route } = await import(filePath);
+            const { default: Route } = await require(filePath);
             const route = new Route();
             const className = Route.name;
             if (usedNames.includes(className)) {
@@ -287,9 +265,9 @@ class Core {
      */
     async importMiddlewares() {
         const usedNames = [];
-        const filePaths = this.scanDir(this.dirs.middlewares);
+        const filePaths = (0, scanDir_1.default)(this.root, this.dirs.middlewares);
         for (const filePath of filePaths) {
-            const { default: Middleware } = await import(filePath);
+            const { default: Middleware } = await require(filePath);
             const className = Middleware.name;
             if (usedNames.includes(className)) {
                 throw new Error(`${className} already in use`);

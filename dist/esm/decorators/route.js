@@ -1,5 +1,5 @@
 export const Route = (path, params) => {
-    const decorator = (target, property, descriptor) => {
+    const decorator = (_target, property, descriptor) => {
         descriptor.value = {
             path,
             property,

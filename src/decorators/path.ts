@@ -1,5 +1,6 @@
 export const Path = (path: string) => {
-    return (ctr: CallableFunction) => {
+    // eslint-disable-next-line @typescript-eslint/ban-types
+    return (ctr: Function) => {
         ctr.prototype.path = path;
     };
 };

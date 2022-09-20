@@ -18,7 +18,8 @@ export declare class Core {
      * Performance timer
      */
     private startTime;
-    constructor();
+    private root;
+    constructor(root: string);
     /**
      * Set dir
      */
@@ -79,10 +80,6 @@ export declare class Core {
      * Init of Error Handler
      */
     private initErrorHandler;
-    /**
-     * Scanner for autoimport
-     */
-    private scanDir;
     /**
      * Path builder for Router
      */

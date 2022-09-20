@@ -1,11 +1,7 @@
 import type RouteParams from "../types/routeParams";
 
 export const Route = (path: string, params?: RouteParams) => {
-    const decorator = (
-        target: Record<string, string | number | boolean>,
-        property: string,
-        descriptor: PropertyDescriptor
-    ) => {
+    const decorator = (_target: unknown, property: string, descriptor: PropertyDescriptor) => {
         descriptor.value = {
             path,
             property,
