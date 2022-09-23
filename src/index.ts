@@ -316,7 +316,7 @@ export class Soope {
                 throw new Error(`${path} is in use`);
             }
             this.usedPaths.push(path);
-            logger.trace(`route ${endpoint} [${method.toUpperCase()}] from ${className}.${property} hooked`);
+            logger.trace(`route ${endpoint || "/"} [${method.toUpperCase()}] from ${className}.${property} hooked`);
             if (middleware.length) {
                 logger.trace(`scoped Middleware "${middlewareName}" hooked`);
             }
