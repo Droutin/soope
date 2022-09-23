@@ -329,40 +329,43 @@ export class Soope {
      */
     private async initRoutes() {
         const usedNames: string[] = [];
-        const filePaths = await scanDir(this.root, this.dirs.routes);
+        try {
+            const filePaths = await scanDir(this.root, this.dirs.routes);
+            for (const filePath of filePaths) {
+                const { default: Route } = await require(filePath);
+                const route = new Route();
+                const className = Route.name;
+                if (usedNames.includes(className)) {
+                    throw new Error(`${className} already in use`);
+                }
+                usedNames.push(className);
 
-        for (const filePath of filePaths) {
-            const { default: Route } = await require(filePath);
-            const route = new Route();
-            const className = Route.name;
-            if (usedNames.includes(className)) {
-                throw new Error(`${className} already in use`);
-            }
-            usedNames.push(className);
+                const props = Object.getOwnPropertyNames(Route.prototype).filter(
+                    (item) => !["constructor", "path", "crud"].includes(item)
+                );
+                const cruds = {
+                    index: "get",
+                    show: "get",
+                    store: "post",
+                    update: "patch",
+                    destroy: "delete",
+                };
+                const path = this.buildPath(this.dirs.routes, filePath, route.path);
 
-            const props = Object.getOwnPropertyNames(Route.prototype).filter(
-                (item) => !["constructor", "path", "crud"].includes(item)
-            );
-            const cruds = {
-                index: "get",
-                show: "get",
-                store: "post",
-                update: "patch",
-                destroy: "delete",
-            };
-            const path = this.buildPath(this.dirs.routes, filePath, route.path);
-
-            if (route.crud) {
-                entries(cruds)
-                    .filter(([crud]) => props.includes(crud))
-                    .forEach(([crud, method]) => {
-                        this.initRoute(className, route[crud], path, method);
+                if (route.crud) {
+                    entries(cruds)
+                        .filter(([crud]) => props.includes(crud))
+                        .forEach(([crud, method]) => {
+                            this.initRoute(className, route[crud], path, method);
+                        });
+                } else {
+                    props.forEach((item) => {
+                        this.initRoute(className, route[item], path);
                     });
-            } else {
-                props.forEach((item) => {
-                    this.initRoute(className, route[item], path);
-                });
+                }
             }
+        } catch {
+            logger.info("no route to import");
         }
         if (!this.usedPaths.includes("GET-/")) {
             router.get(
@@ -382,15 +385,19 @@ export class Soope {
      */
     private async importMiddlewares() {
         const usedNames: string[] = [];
-        const filePaths = await scanDir(this.root, this.dirs.middlewares);
-        for (const filePath of filePaths) {
-            const { default: Middleware } = await require(filePath);
-            const className = Middleware.name;
-            if (usedNames.includes(className)) {
-                throw new Error(`${className} already in use`);
+        try {
+            const filePaths = await scanDir(this.root, this.dirs.middlewares);
+            for (const filePath of filePaths) {
+                const { default: Middleware } = await require(filePath);
+                const className = Middleware.name;
+                if (usedNames.includes(className)) {
+                    throw new Error(`${className} already in use`);
+                }
+                usedNames.push(className);
+                this.middlewares.set(className, Middleware);
             }
-            usedNames.push(className);
-            this.middlewares.set(className, Middleware);
+        } catch {
+            logger.info("no middleware to import");
         }
     }
     /**

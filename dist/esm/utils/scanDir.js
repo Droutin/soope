@@ -1,7 +1,8 @@
-import { readdir } from "fs/promises";
+import { readdir, access, constants } from "fs/promises";
 const allowedExts = ["js", "ts", "mjs", "cjs"];
 export const scanDir = async (root, dir) => {
     const relativePaths = [];
+    await access(root + dir, constants.W_OK | constants.R_OK);
     const dirs = await readdir(root + dir, {
         withFileTypes: true,
     });
