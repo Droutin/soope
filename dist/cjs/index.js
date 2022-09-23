@@ -3,19 +3,44 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Core = exports.router = exports.app = exports.express = void 0;
+exports.Soope = exports.router = exports.app = exports.express = void 0;
 const express_1 = __importDefault(require("express"));
 const dotenv_1 = __importDefault(require("dotenv"));
+const on_finished_1 = __importDefault(require("on-finished"));
+const on_headers_1 = __importDefault(require("on-headers"));
 dotenv_1.default.config();
 /**
- * Parts of Core
+ * Parts of Soope
  */
 const entries_1 = __importDefault(require("./utils/entries"));
 const scanDir_1 = __importDefault(require("./utils/scanDir"));
+const logger_1 = __importDefault(require("./utils/logger"));
 exports.express = express_1.default;
 exports.app = (0, exports.express)();
 exports.router = exports.express.Router();
-class Core {
+const logger = new logger_1.default("core");
+function recordStartTime() {
+    this._startAt = process.hrtime();
+}
+const getPerfMS = (start, end) => {
+    return (end[0] - start[0]) * 1e3 + (end[1] - start[1]) * 1e-6;
+};
+const logAccess = (req, res, next) => {
+    req._startAt = undefined;
+    res._startAt = undefined;
+    recordStartTime.call(req);
+    (0, on_headers_1.default)(res, recordStartTime);
+    (0, on_finished_1.default)(res, (_err, res) => {
+        if (!req._startAt || !res._startAt) {
+            return 0;
+        }
+        const contentLength = res.getHeader("Content-Length");
+        const responseTime = getPerfMS(req._startAt, res._startAt).toFixed(3);
+        logger.trace(`${req.method} ${req.url} ${res.statusCode} ${responseTime} ms - ${contentLength}`);
+    });
+    return next();
+};
+class Soope {
     params = new Map();
     hooks = {
         beforeStart: undefined,
@@ -30,29 +55,30 @@ class Core {
     /**
      * Performance timer
      */
-    startTime = 0;
+    startTime = [0, 0];
     root;
+    /**
+     * Use __dirname as root dir
+     */
     constructor(root) {
         this.root = root + "/";
+        this.setParam("PORT", 8000);
         exports.app.use(exports.express.static("public"));
         exports.app.use((req, res, next) => {
             res.removeHeader("Server");
             res.removeHeader("Via");
             res.removeHeader("X-Powered-By");
-            next();
+            return next();
         });
-        exports.router.get("/", this.requestHandler((req, res) => {
-            return res.send({
-                name: process.env.npm_package_name || "Service",
-                version: process.env.npm_package_version || "1.0.0",
-            });
-        }));
+        exports.app.use(logAccess);
     }
     /**
      * Set dir
      */
     setDir(name, path) {
-        this.dirs[name] = path.endsWith("/") ? path.replace("/", "") : path;
+        path = path.endsWith("/") ? path.slice(0, -1) : path;
+        path = path.startsWith("/") ? path.slice(1) : path;
+        this.dirs[name] = path;
     }
     /**
      * Set dirs
@@ -61,6 +87,18 @@ class Core {
         (0, entries_1.default)(dirs).forEach(([name, path]) => {
             this.setDir(name, path);
         });
+    }
+    /**
+     * Get dirs
+     */
+    getDirs() {
+        return this.dirs;
+    }
+    /**
+     * Get dir
+     */
+    getDir(name) {
+        return this.dirs[name];
     }
     /**
      * Before start hook
@@ -75,6 +113,12 @@ class Core {
         this.setHook("afterStart", callable);
     }
     /**
+     * Get hook
+     */
+    getHook(name) {
+        return this.hooks[name];
+    }
+    /**
      * Set hook
      */
     setHook(name, callable) {
@@ -87,6 +131,12 @@ class Core {
         this.params.set(name.toUpperCase(), value);
     }
     /**
+     * Get param
+     */
+    getParam(name) {
+        return this.params.get(name.toUpperCase());
+    }
+    /**
      * Set object of params
      */
     setParams(params) {
@@ -95,12 +145,19 @@ class Core {
         });
     }
     /**
+     * Get params
+     */
+    getParams() {
+        return this.params;
+    }
+    /**
      * Set port from args
      */
     setArgPort() {
         const args = process.argv.slice(2);
-        if (parseInt(args[0], 10)) {
-            this.setParam("PORT", args[0]);
+        const port = args[0];
+        if (port) {
+            this.setParam("PORT", parseInt(port, 10));
         }
     }
     /**
@@ -108,22 +165,21 @@ class Core {
      */
     loadEnv() {
         this.setParams(process.env);
-        this.setArgPort();
     }
     /**
      * Start application
      */
     async start(params) {
-        this.loadEnv();
         if (params)
             this.setParams(params);
-        this.params.set("PORT", this.params.get("PORT") || 8000);
+        this.loadEnv();
+        this.setArgPort();
         if (this.hooks.beforeStart) {
             await this.hooks.beforeStart();
         }
         exports.app.listen(this.params.get("PORT"), () => {
             console.log("\x1b[32m%s\x1b[0m", `[server] 🔌 Project "${process.env.npm_package_name}"[${process.env.npm_package_version}] is starting`);
-            this.startTime = performance.now();
+            this.startTime = process.hrtime();
             this.startProcedure();
         });
     }
@@ -139,7 +195,7 @@ class Core {
         if (this.hooks.afterStart) {
             await this.hooks.afterStart();
         }
-        const took = (performance.now() - this.startTime).toFixed(0);
+        const took = getPerfMS(this.startTime, process.hrtime()).toFixed(3);
         console.log("\x1b[32m%s\x1b[0m", `[server] 🔥 Start took ${took}ms`);
     }
     /**
@@ -158,8 +214,8 @@ class Core {
             http,
             message: err.message,
         };
-        console.log(err);
-        console.error(message);
+        logger.error(message.message);
+        logger.debug(req.method === "GET" ? req.query : req.body);
         return res.status(http).send(message);
     };
     /**
@@ -185,14 +241,15 @@ class Core {
         let path = pathArray[0];
         if (endpoint)
             path = path.replace(/\/[^/]*$/, endpoint);
-        return path;
+        return path === "/index" ? "/" : path;
     }
-    initRoute(route, path, method = "get") {
+    initRoute(className, route, path, method = "get") {
         let property;
-        let endpoint = path;
+        let endpoint = path.endsWith("/") ? path.slice(0, -1) : path;
         let handler;
         let methods = [method];
-        let middleware = undefined;
+        const middleware = [];
+        let middlewareName;
         if (typeof route === "function") {
             property = route.name;
             handler = route;
@@ -207,25 +264,40 @@ class Core {
             if (route.middleware) {
                 if (typeof route.middleware === "string") {
                     const Middleware = new (this.middlewares.get(route.middleware))();
-                    middleware = Middleware.handler;
+                    middlewareName = Middleware.constructor.name;
+                    middleware.push(Middleware.handler);
                 }
                 else {
-                    middleware = route.middleware;
+                    middleware.push(route.middleware);
+                    middlewareName = route.middleware.name;
                 }
+                middleware.unshift((_req, _res, next) => {
+                    logger.debug(`scoped middleware "${middlewareName}" triggered`);
+                    return next();
+                });
             }
         }
-        const handlerStack = [middleware, this.requestHandler(handler)].filter((h) => h !== undefined);
+        const handlerStack = [...middleware, this.requestHandler(handler)];
         methods.forEach((method) => {
-            console.log(`[${method.toUpperCase()}] ${property} - ${endpoint}`);
+            const path = `${method.toUpperCase()}-${endpoint}`;
+            if (this.usedPaths.includes(path)) {
+                throw new Error(`${path} is in use`);
+            }
+            this.usedPaths.push(path);
+            logger.trace(`route ${endpoint} [${method.toUpperCase()}] from ${className}.${property} hooked`);
+            if (middleware.length) {
+                logger.trace(`scoped Middleware "${middlewareName}" hooked`);
+            }
             exports.router[method](endpoint, ...handlerStack);
         });
     }
+    usedPaths = [];
     /**
      * Init of Routes
      */
     async initRoutes() {
         const usedNames = [];
-        const filePaths = (0, scanDir_1.default)(this.root, this.dirs.routes);
+        const filePaths = await (0, scanDir_1.default)(this.root, this.dirs.routes);
         for (const filePath of filePaths) {
             const { default: Route } = await require(filePath);
             const route = new Route();
@@ -243,20 +315,26 @@ class Core {
                 destroy: "delete",
             };
             const path = this.buildPath(this.dirs.routes, filePath, route.path);
-            console.log(className);
             if (route.crud) {
                 (0, entries_1.default)(cruds)
                     .filter(([crud]) => props.includes(crud))
                     .forEach(([crud, method]) => {
-                    this.initRoute(route[crud], path, method);
+                    this.initRoute(className, route[crud], path, method);
                 });
             }
             else {
                 props.forEach((item) => {
-                    this.initRoute(route[item], path);
+                    this.initRoute(className, route[item], path);
                 });
             }
-            console.log("---");
+        }
+        if (!this.usedPaths.includes("GET-/")) {
+            exports.router.get("/", this.requestHandler((req, res) => {
+                return res.send({
+                    name: process.env.npm_package_name || "Service",
+                    version: process.env.npm_package_version || "1.0.0",
+                });
+            }));
         }
         exports.app.use(exports.router);
     }
@@ -265,7 +343,7 @@ class Core {
      */
     async importMiddlewares() {
         const usedNames = [];
-        const filePaths = (0, scanDir_1.default)(this.root, this.dirs.middlewares);
+        const filePaths = await (0, scanDir_1.default)(this.root, this.dirs.middlewares);
         for (const filePath of filePaths) {
             const { default: Middleware } = await require(filePath);
             const className = Middleware.name;
@@ -284,8 +362,12 @@ class Core {
             const Middleware = this.middlewares.get(name);
             if (Middleware) {
                 const middleware = new Middleware();
+                exports.app.use((_req, _res, next) => {
+                    logger.debug(`global middleware "${name}" triggered`);
+                    return next();
+                });
                 exports.app.use(middleware.handler);
-                console.log(`[server] Global Middleware "${name}" hooked`);
+                logger.trace(`global Middleware "${name}" hooked`);
             }
         });
     }
@@ -296,5 +378,5 @@ class Core {
         this.middlewareQueue.push(name);
     }
 }
-exports.Core = Core;
-exports.default = Core;
+exports.Soope = Soope;
+exports.default = Soope;

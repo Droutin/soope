@@ -1,0 +1,35 @@
+export { create as c } from "ansi-colors";
+declare type Level = "trace" | "debug" | "info" | "warn" | "error" | "fatal";
+declare type Levels = Partial<Record<Level, boolean>>;
+export declare class Logger {
+    private namespace;
+    private levels;
+    private canWrite;
+    private dir;
+    constructor(namespace?: string, levels?: Levels);
+    palete(): void;
+    setDir(dir: string): void;
+    getDir(): string;
+    setLevel(level: Level | "all", enable?: boolean): 0 | undefined;
+    getLevel(level: Level): boolean | undefined;
+    setLevels(levels: Levels): void;
+    getLevels(): Map<Level, boolean>;
+    setNamespace(namespace?: string): void;
+    getNamespace(): string;
+    private colorMessage;
+    private getDate;
+    private log;
+    trace(message: unknown): string | undefined;
+    t(message: unknown): string | undefined;
+    debug(message: unknown): string | undefined;
+    d(message: unknown): string | undefined;
+    info(message: unknown): string | undefined;
+    i(message: unknown): string | undefined;
+    warn(message: unknown): string | undefined;
+    w(message: unknown): string | undefined;
+    error(message: unknown): string | undefined;
+    e(message: unknown): string | undefined;
+    fatal(message: unknown): string | undefined;
+    f(message: unknown): string | undefined;
+}
+export default Logger;

@@ -1,5 +1,10 @@
+/// <reference types="node" />
 import Express from "express";
 import type { Request, Response, NextFunction } from "express";
+/**
+ * Types of Core
+ */
+import type Hooks from "./types/hooks";
 import type Dirs from "./types/dirs";
 /**
  * Exports
@@ -8,7 +13,7 @@ export type { Request, Response, NextFunction, RequestHandler, Express } from "e
 export declare const express: typeof Express;
 export declare const app: import("express-serve-static-core").Express;
 export declare const router: import("express-serve-static-core").Router;
-export declare class Core {
+export declare class Soope {
     private params;
     private hooks;
     private dirs;
@@ -19,6 +24,9 @@ export declare class Core {
      */
     private startTime;
     private root;
+    /**
+     * Use __dirname as root dir
+     */
     constructor(root: string);
     /**
      * Set dir
@@ -29,6 +37,14 @@ export declare class Core {
      */
     setDirs(dirs: Dirs): void;
     /**
+     * Get dirs
+     */
+    getDirs(): Dirs;
+    /**
+     * Get dir
+     */
+    getDir(name: keyof Dirs): string;
+    /**
      * Before start hook
      */
     beforeStart(callable: CallableFunction): void;
@@ -37,17 +53,29 @@ export declare class Core {
      */
     afterStart(callable: CallableFunction): void;
     /**
+     * Get hook
+     */
+    getHook(name: keyof Hooks): CallableFunction | undefined;
+    /**
      * Set hook
      */
     private setHook;
     /**
      * Set param
      */
-    private setParam;
+    setParam(name: string, value: string | number | boolean): void;
+    /**
+     * Get param
+     */
+    getParam(name: string): any;
     /**
      * Set object of params
      */
-    private setParams;
+    setParams(params: NodeJS.ProcessEnv | Record<string, string | number | boolean>): void;
+    /**
+     * Get params
+     */
+    getParams(): Map<any, any>;
     /**
      * Set port from args
      */
@@ -85,6 +113,7 @@ export declare class Core {
      */
     private buildPath;
     private initRoute;
+    private usedPaths;
     /**
      * Init of Routes
      */
@@ -102,4 +131,4 @@ export declare class Core {
      */
     useMiddleware(name: string): void;
 }
-export default Core;
+export default Soope;
