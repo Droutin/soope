@@ -15,8 +15,10 @@ export class Logger {
     levels = new Map();
     canWrite = true;
     dir = "logs/";
-    constructor(namespace, levels) {
-        this.setNamespace(namespace);
+    constructor({ namespace, dir, levels } = {}) {
+        if (namespace) {
+            this.setNamespace(namespace);
+        }
         if (levels) {
             this.setLevels(levels);
         }
@@ -27,6 +29,9 @@ export class Logger {
         }
         if (process.env.LOG_DIR) {
             this.setDir(process.env.LOG_DIR);
+        }
+        if (dir) {
+            this.setDir(dir);
         }
         try {
             accessSync(this.dir, constants.R_OK | constants.W_OK);
@@ -106,19 +111,35 @@ export class Logger {
         ].join("-");
         return date;
     }
+    serialize(data) {
+        const serialized = [];
+        data.forEach((item) => {
+            if (typeof item === "string") {
+                return serialized.push(item);
+            }
+            if (item === undefined) {
+                return serialized.push("undefined");
+            }
+            if (item === null) {
+                return serialized.push("null");
+            }
+            if (item instanceof Error) {
+                return serialized.push(item.message);
+            }
+            if (typeof item === "object") {
+                return serialized.push(JSON.stringify(item));
+            }
+            if (typeof item === "number") {
+                return serialized.push(item.toString());
+            }
+        });
+        return serialized;
+    }
     log(level, message) {
         const now = new Date();
         const datetime = now.toISOString().replace("T", " ");
-        if (message === null) {
-            message = "null";
-        }
-        else if (message === undefined) {
-            message = "undefined";
-        }
-        else if (typeof message === "object") {
-            message = JSON.stringify(message);
-        }
-        const template = [datetime, level.toUpperCase(), this.namespace, "-", message];
+        const serialized = this.serialize(message);
+        const template = [datetime, level.toUpperCase(), this.namespace, "-", ...serialized];
         process.stdout.write(this.colorMessage(template));
         const file = this.dir + this.getDate() + ".log";
         if (this.canWrite) {
@@ -128,46 +149,46 @@ export class Logger {
         }
         return template.join(" ");
     }
-    trace(message) {
+    trace(...message) {
         if (this.levels.get("trace"))
             return this.log("trace", message);
     }
-    t(message) {
+    t(...message) {
         return this.trace(message);
     }
-    debug(message) {
+    debug(...message) {
         if (this.levels.get("debug"))
             return this.log("debug", message);
     }
-    d(message) {
+    d(...message) {
         return this.debug(message);
     }
-    info(message) {
+    info(...message) {
         if (this.levels.get("info"))
             return this.log("info", message);
     }
-    i(message) {
+    i(...message) {
         return this.info(message);
     }
-    warn(message) {
+    warn(...message) {
         if (this.levels.get("warn"))
             return this.log("warn", message);
     }
-    w(message) {
+    w(...message) {
         return this.warn(message);
     }
-    error(message) {
+    error(...message) {
         if (this.levels.get("error"))
             return this.log("error", message);
     }
-    e(message) {
+    e(...message) {
         return this.error(message);
     }
-    fatal(message) {
+    fatal(...message) {
         if (this.levels.get("fatal"))
             return this.log("fatal", message);
     }
-    f(message) {
+    f(...message) {
         return this.fatal(message);
     }
 }

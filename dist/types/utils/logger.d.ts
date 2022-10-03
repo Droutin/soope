@@ -6,9 +6,13 @@ export declare class Logger {
     private levels;
     private canWrite;
     private dir;
-    constructor(namespace?: string, levels?: Levels);
+    constructor({ namespace, dir, levels }?: {
+        namespace?: string;
+        dir?: string;
+        levels?: Levels;
+    });
     palete(): void;
-    setDir(dir: string): void;
+    private setDir;
     getDir(): string;
     setLevel(level: Level | "all", enable?: boolean): 0 | undefined;
     getLevel(level: Level): boolean | undefined;
@@ -18,18 +22,19 @@ export declare class Logger {
     getNamespace(): string;
     private colorMessage;
     private getDate;
+    private serialize;
     private log;
-    trace(message: unknown): string | undefined;
-    t(message: unknown): string | undefined;
-    debug(message: unknown): string | undefined;
-    d(message: unknown): string | undefined;
-    info(message: unknown): string | undefined;
-    i(message: unknown): string | undefined;
-    warn(message: unknown): string | undefined;
-    w(message: unknown): string | undefined;
-    error(message: unknown): string | undefined;
-    e(message: unknown): string | undefined;
-    fatal(message: unknown): string | undefined;
-    f(message: unknown): string | undefined;
+    trace(...message: unknown[]): string | undefined;
+    t(...message: unknown[]): string | undefined;
+    debug(...message: unknown[]): string | undefined;
+    d(...message: unknown[]): string | undefined;
+    info(...message: unknown[]): string | undefined;
+    i(...message: unknown[]): string | undefined;
+    warn(...message: unknown[]): string | undefined;
+    w(...message: unknown[]): string | undefined;
+    error(...message: unknown[]): string | undefined;
+    e(...message: unknown[]): string | undefined;
+    fatal(...message: unknown[]): string | undefined;
+    f(...message: unknown[]): string | undefined;
 }
 export default Logger;

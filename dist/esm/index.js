@@ -12,7 +12,9 @@ import Logger from "./utils/logger";
 export const express = Express;
 export const app = express();
 export const router = express.Router();
-const logger = new Logger("core");
+const logger = new Logger({
+    namespace: "core",
+});
 function recordStartTime() {
     this._startAt = process.hrtime();
 }
@@ -168,12 +170,12 @@ export class Soope {
             this.setParams(params);
         this.loadEnv();
         this.setArgPort();
-        if (this.hooks.beforeStart) {
-            await this.hooks.beforeStart();
-        }
-        app.listen(this.params.get("PORT"), () => {
-            console.log("\x1b[32m%s\x1b[0m", `[server] 🔌 Project "${process.env.npm_package_name}"[${process.env.npm_package_version}] is starting`);
+        app.listen(this.params.get("PORT"), async () => {
             this.startTime = process.hrtime();
+            console.log("\x1b[32m%s\x1b[0m", `[server] 🔌 Project "${process.env.npm_package_name}"[${process.env.npm_package_version}] is starting`);
+            if (this.hooks.beforeStart) {
+                await this.hooks.beforeStart();
+            }
             this.startProcedure();
         });
     }
@@ -237,41 +239,52 @@ export class Soope {
             path = path.replace(/\/[^/]*$/, endpoint);
         return path === "/index" ? "/" : path;
     }
-    initRoute(className, route, path, method = "get") {
+    initRoute(className, route, routeFn, path, method = "get") {
         let property;
         let endpoint = path.endsWith("/") ? path.slice(0, -1) : path;
         let handler;
         let methods = [method];
         const middleware = [];
         let middlewareName;
-        if (typeof route === "function") {
-            property = route.name;
-            handler = route;
+        if (typeof route[routeFn] === "function") {
+            property = route[routeFn].name;
+            handler = route[routeFn];
         }
         else {
-            property = route.property;
-            endpoint += route.path;
-            handler = route.fn;
-            if (route.methods) {
-                methods = route.methods;
+            property = route[routeFn].property;
+            endpoint += route[routeFn].path;
+            handler = route[routeFn].fn;
+            if (route[routeFn].methods) {
+                methods = route[routeFn].methods;
             }
-            if (route.middleware) {
-                if (typeof route.middleware === "string") {
-                    const Middleware = new (this.middlewares.get(route.middleware))();
-                    middlewareName = Middleware.constructor.name;
-                    middleware.push(Middleware.handler);
+            if (route[routeFn].middleware) {
+                let added = false;
+                if (typeof route[routeFn].middleware === "string") {
+                    const importedM = this.middlewares.get(route[routeFn].middleware);
+                    if (importedM) {
+                        const Middleware = new importedM();
+                        middlewareName = Middleware.constructor.name;
+                        middleware.push(Middleware.handler.bind(Middleware));
+                        added = true;
+                    }
+                    else {
+                        logger.warn("cant find middleware:", route[routeFn].middleware);
+                    }
                 }
                 else {
-                    middleware.push(route.middleware);
-                    middlewareName = route.middleware.name;
+                    middleware.push(route[routeFn].middleware);
+                    middlewareName = route[routeFn].middleware.name;
+                    added = true;
                 }
-                middleware.unshift((_req, _res, next) => {
-                    logger.debug(`scoped middleware "${middlewareName}" triggered`);
-                    return next();
-                });
+                if (added) {
+                    middleware.unshift((_req, _res, next) => {
+                        logger.debug(`scoped middleware "${middlewareName}" triggered`);
+                        return next();
+                    });
+                }
             }
         }
-        const handlerStack = [...middleware, this.requestHandler(handler)];
+        const handlerStack = [...middleware, this.requestHandler(handler.bind(route))];
         methods.forEach((method) => {
             const path = `${method.toUpperCase()}-${endpoint}`;
             if (this.usedPaths.includes(path)) {
@@ -295,37 +308,50 @@ export class Soope {
             const filePaths = await scanDir(this.root, this.dirs.routes);
             for (const filePath of filePaths) {
                 const { default: Route } = await require(filePath);
-                const route = new Route();
-                const className = Route.name;
-                if (usedNames.includes(className)) {
-                    throw new Error(`${className} already in use`);
+                try {
+                    const route = new Route();
+                    const className = Route.name;
+                    if (usedNames.includes(className)) {
+                        throw new Error(`${className} already in use`);
+                    }
+                    usedNames.push(className);
+                    const props = Object.getOwnPropertyNames(Route.prototype).filter((item) => !["constructor", "path", "crud"].includes(item));
+                    const cruds = {
+                        index: "get",
+                        show: "get",
+                        store: "post",
+                        update: "patch",
+                        destroy: "delete",
+                    };
+                    const path = this.buildPath(this.dirs.routes, filePath, route?.path);
+                    if (route?.crud) {
+                        entries(cruds)
+                            .filter(([crud]) => props.includes(crud))
+                            .forEach(([crud, method]) => {
+                            this.initRoute(className, route, crud, path, method);
+                        });
+                    }
+                    else {
+                        props.forEach((item) => {
+                            this.initRoute(className, route, item, path);
+                        });
+                    }
                 }
-                usedNames.push(className);
-                const props = Object.getOwnPropertyNames(Route.prototype).filter((item) => !["constructor", "path", "crud"].includes(item));
-                const cruds = {
-                    index: "get",
-                    show: "get",
-                    store: "post",
-                    update: "patch",
-                    destroy: "delete",
-                };
-                const path = this.buildPath(this.dirs.routes, filePath, route.path);
-                if (route.crud) {
-                    entries(cruds)
-                        .filter(([crud]) => props.includes(crud))
-                        .forEach(([crud, method]) => {
-                        this.initRoute(className, route[crud], path, method);
-                    });
-                }
-                else {
-                    props.forEach((item) => {
-                        this.initRoute(className, route[item], path);
-                    });
+                catch (error) {
+                    throw new Error(`no default export in route: ${filePath}`);
                 }
             }
         }
-        catch {
-            logger.info("no route to import");
+        catch (error) {
+            if (error instanceof Error) {
+                switch (error.message) {
+                    case "1":
+                        return logger.error("cant access dir:", this.root + this.dirs.routes);
+                    case "2":
+                        return logger.warn("there is no routes in:", this.root + this.dirs.routes);
+                }
+            }
+            logger.error(error);
         }
         if (!this.usedPaths.includes("GET-/")) {
             router.get("/", this.requestHandler((req, res) => {
@@ -345,17 +371,31 @@ export class Soope {
         try {
             const filePaths = await scanDir(this.root, this.dirs.middlewares);
             for (const filePath of filePaths) {
-                const { default: Middleware } = await require(filePath);
-                const className = Middleware.name;
-                if (usedNames.includes(className)) {
-                    throw new Error(`${className} already in use`);
+                try {
+                    const { default: Middleware } = await require(filePath);
+                    const className = Middleware.name;
+                    if (usedNames.includes(className)) {
+                        throw new Error(`${className} already in use`);
+                    }
+                    usedNames.push(className);
+                    this.middlewares.set(className, Middleware);
                 }
-                usedNames.push(className);
-                this.middlewares.set(className, Middleware);
+                catch (error) {
+                    throw new Error(`no default export in middleware: ${filePath}`);
+                }
             }
         }
-        catch {
-            logger.info("no middleware to import");
+        catch (error) {
+            if (error instanceof Error) {
+                switch (error.message) {
+                    case "1":
+                        return 0;
+                    /* return logger.error("cant access dir:", this.root + this.dirs.routes); */
+                    case "2":
+                        return logger.warn("there is no middlewares in:", this.root + this.dirs.routes);
+                }
+            }
+            logger.error(error);
         }
     }
     /**

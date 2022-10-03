@@ -5,10 +5,18 @@ const promises_1 = require("fs/promises");
 const allowedExts = ["js", "ts", "mjs", "cjs"];
 const scanDir = async (root, dir) => {
     const relativePaths = [];
-    await (0, promises_1.access)(root + dir, promises_1.constants.W_OK | promises_1.constants.R_OK);
+    try {
+        await (0, promises_1.access)(root + dir, promises_1.constants.W_OK | promises_1.constants.R_OK);
+    }
+    catch {
+        throw new Error("1");
+    }
     const dirs = await (0, promises_1.readdir)(root + dir, {
         withFileTypes: true,
     });
+    if (!dirs.length) {
+        throw new Error("2");
+    }
     for (const file of dirs) {
         const name = file.name;
         const ext = name.split(".").pop() || "";

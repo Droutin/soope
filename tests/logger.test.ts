@@ -14,9 +14,9 @@ describe("Logger", () => {
         expect(logger.getNamespace()).toBe("login");
     });
     it("set log dir", () => {
-        logger.setDir("logs/test");
+        logger = new Logger({ dir: "logs/test" });
         expect(logger.getDir()).toBe("logs/test/");
-        logger.setDir("/logs/test/");
+        logger = new Logger({ dir: "/logs/test/" });
         expect(logger.getDir()).toBe("logs/test/");
     });
     it("log trace", () => {
@@ -63,5 +63,17 @@ describe("Logger", () => {
     it("log info with null", () => {
         logger.setLevel("info");
         expect(logger.info(null)).toContain(`INFO default - null`);
+    });
+    it("log info with multiple variables", () => {
+        logger.setLevel("info");
+        const v1 = "lorem",
+            v2 = 12,
+            v3 = null,
+            v4 = undefined,
+            v5 = { lorem: "ipsum" },
+            v6 = ["Lorem", "ipsum"];
+        expect(logger.info("test", v1, v2, v3, v4, v5, v6)).toContain(
+            `INFO default - test lorem 12 null undefined {"lorem":"ipsum"} ["Lorem","ipsum"]`
+        );
     });
 });
