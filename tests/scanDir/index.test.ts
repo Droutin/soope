@@ -7,9 +7,9 @@ describe("Scan dir for files", () => {
     });
 
     it("should return path for index route", () => {
-        expect(result[1]).toBe(__dirname + "/routes/index.route.ts");
+        expect(result[1]).toBe(__dirname + "/routes/index.ts");
     });
     it("should return path for api/v1/login route", () => {
-        expect(result[0]).toBe(__dirname + "/routes/api/v1/login.route.ts");
+        expect(result[0]).toBe(__dirname + "/routes/api/v1/login.ts");
     });
 });
