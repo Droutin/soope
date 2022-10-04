@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.toRegExp = exports.scanDir = exports.Logger = exports.entries = void 0;
+exports.validator = exports.toRegExp = exports.scanDir = exports.Logger = exports.entries = void 0;
 var entries_1 = require("./entries");
 Object.defineProperty(exports, "entries", { enumerable: true, get: function () { return entries_1.entries; } });
 var logger_1 = require("./logger");
@@ -9,3 +9,5 @@ var scanDir_1 = require("./scanDir");
 Object.defineProperty(exports, "scanDir", { enumerable: true, get: function () { return scanDir_1.scanDir; } });
 var toRegExp_1 = require("./toRegExp");
 Object.defineProperty(exports, "toRegExp", { enumerable: true, get: function () { return toRegExp_1.toRegExp; } });
+var validator_1 = require("./validator");
+Object.defineProperty(exports, "validator", { enumerable: true, get: function () { return validator_1.validator; } });
