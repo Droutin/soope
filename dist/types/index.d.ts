@@ -112,6 +112,9 @@ export declare class Soope {
      * Path builder for Router
      */
     private buildPath;
+    /**
+     * TODO refactor && add type to route
+     */
     private initRoute;
     private usedPaths;
     /**

@@ -37,7 +37,7 @@ describe("Validator functionality", () => {
         } catch (error) {
             if (error instanceof Error) {
                 if (process.env.DEBUG === "true") {
-                    expect(error.message).toBe(`Param "user" is required`);
+                    expect(error.message).toBe(`Param 'user' is required`);
                 } else {
                     expect(error.message).toBe("Validation Error");
                 }
@@ -55,7 +55,7 @@ describe("Validator functionality", () => {
         } catch (error) {
             if (error instanceof Error) {
                 if (process.env.DEBUG === "true") {
-                    expect(error.message).toBe(`Param "user" has wrong DataType. Expected "string"`);
+                    expect(error.message).toBe(`Param 'user' has wrong DataType. Expected 'string'`);
                 } else {
                     expect(error.message).toBe("Validation Error");
                 }

@@ -88,11 +88,11 @@ const getErrorMessage = (code, ...v) => {
     if (process.env.DEBUG === "true") {
         switch (code) {
             case "REQUIRED":
-                return `Param "${v[0]}" is required`;
+                return `Param '${v[0]}' is required`;
             case "WRONG_DATATYPE":
-                return `Param "${v[0]}" has wrong DataType. Expected "${v[1]}"`;
+                return `Param '${v[0]}' has wrong DataType. Expected '${v[1]}'`;
             case "UNKNOWN_DATATYPE":
-                return `Param "${v[0]}" has unknown DataType. Received "${v[1]}"`;
+                return `Param '${v[0]}' has unknown DataType. Received '${v[1]}'`;
             default:
                 return "Unknown Validation Error";
         }

@@ -36,7 +36,7 @@ const logAccess = (req, res, next) => {
         if (!req._startAt || !res._startAt) {
             return 0;
         }
-        const contentLength = res.getHeader("Content-Length");
+        const contentLength = res.getHeader("Content-Length") ?? "N/A";
         const responseTime = getPerfMS(req._startAt, res._startAt).toFixed(3);
         logger.trace(`${req.method} ${req.url} ${res.statusCode} ${responseTime} ms - ${contentLength}`);
     });
@@ -178,7 +178,7 @@ class Soope {
         this.setArgPort();
         exports.app.listen(this.params.get("PORT"), async () => {
             this.startTime = process.hrtime();
-            console.log("\x1b[32m%s\x1b[0m", `[server] 🔌 Project "${process.env.npm_package_name}"[${process.env.npm_package_version}] is starting`);
+            console.log("\x1b[32m%s\x1b[0m", `[server] 🔌 Project '${process.env.npm_package_name}'[${process.env.npm_package_version}] is starting`);
             if (this.hooks.beforeStart) {
                 await this.hooks.beforeStart();
             }
@@ -217,7 +217,10 @@ class Soope {
             message: err.message,
         };
         logger.error(message.message);
-        logger.debug(req.method === "GET" ? req.query : req.body);
+        logger.debug("data:", req.method === "GET" ? req.query : req.body);
+        if (process.env.DEBUG === "true") {
+            console.error(err.stack);
+        }
         return res.status(http).send(message);
     };
     /**
@@ -245,6 +248,9 @@ class Soope {
             path = path.replace(/\/[^/]*$/, endpoint);
         return path === "/index" ? "/" : path;
     }
+    /**
+     * TODO refactor && add type to route
+     */
     initRoute(className, route, routeFn, path, method = "get") {
         let property;
         let endpoint = path.endsWith("/") ? path.slice(0, -1) : path;
@@ -284,7 +290,7 @@ class Soope {
                 }
                 if (added) {
                     middleware.unshift((_req, _res, next) => {
-                        logger.debug(`scoped middleware "${middlewareName}" triggered`);
+                        logger.debug(`scoped middleware '${middlewareName}' triggered`);
                         return next();
                     });
                 }
@@ -299,7 +305,7 @@ class Soope {
             this.usedPaths.push(path);
             logger.trace(`route ${endpoint || "/"} [${method.toUpperCase()}] from ${className}.${property} hooked`);
             if (middleware.length) {
-                logger.trace(`scoped Middleware "${middlewareName}" hooked`);
+                logger.trace(`scoped Middleware '${middlewareName}' hooked`);
             }
             exports.router[method](endpoint, ...handlerStack);
         });
@@ -413,11 +419,11 @@ class Soope {
             if (Middleware) {
                 const middleware = new Middleware();
                 exports.app.use((_req, _res, next) => {
-                    logger.debug(`global middleware "${name}" triggered`);
+                    logger.debug(`global middleware '${name}' triggered`);
                     return next();
                 });
                 exports.app.use(middleware.handler);
-                logger.trace(`global Middleware "${name}" hooked`);
+                logger.trace(`global Middleware '${name}' hooked`);
             }
         });
     }
