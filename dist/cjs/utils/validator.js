@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.validator = void 0;
+const _1 = require(".");
 const validator = (data, rules) => {
     for (const [param, rule] of Object.entries(rules)) {
         const item = data[param];
@@ -9,94 +10,101 @@ const validator = (data, rules) => {
             continue;
         }
         if (item === null || item === undefined) {
-            throw new Error(`${param} is required`);
+            throw new Error(getErrorMessage("REQUIRED", param));
         }
-        const errM = `${param} has wrong param`;
+        const errM = getErrorMessage("WRONG_DATATYPE", param, dataType);
         switch (dataType.replace("?", "")) {
             case "string":
-                if (typeof item !== "string" || item === "") {
-                    throw new Error(errM + ` ${dataType}`);
+                if (!(0, _1.isString)(item)) {
+                    throw new Error(errM);
                 }
                 break;
             case "number":
-                if (typeof item !== "number" || isNaN(item)) {
-                    throw new Error(errM + ` ${dataType}`);
+                if (!(0, _1.isNumber)(item)) {
+                    throw new Error(errM);
                 }
                 break;
             case "number+":
-                if (typeof item !== "number" || isNaN(item) || item < 0) {
-                    throw new Error(errM + ` ${dataType}`);
+                if (!(0, _1.isNumber)(item) || !(0, _1.isPositiveNumber)(item)) {
+                    throw new Error(errM);
                 }
                 break;
             case "number-":
-                if (typeof item !== "number" || isNaN(item) || item > 0) {
-                    throw new Error(errM + ` ${dataType}`);
+                if (!(0, _1.isNumber)(item) || !(0, _1.isNegativeNumber)(item)) {
+                    throw new Error(errM);
                 }
                 break;
             case "boolean":
-                if (typeof item !== "boolean") {
-                    throw new Error(errM + ` ${dataType}`);
+                if (!(0, _1.isBoolean)(item)) {
+                    throw new Error(errM);
                 }
                 break;
             case "array":
-                if (!Array.isArray(item) || !item.length) {
-                    throw new Error(errM + ` ${dataType}`);
+                if (!(0, _1.isArray)(item)) {
+                    throw new Error(errM);
                 }
                 break;
             case "string[]":
-                if (!Array.isArray(item) ||
-                    !item.length ||
-                    !item.every((val) => typeof val === "string" && val !== "")) {
-                    throw new Error(errM + ` ${dataType}`);
+                if (!(0, _1.isArray)(item) || !item.every((val) => (0, _1.isString)(val))) {
+                    throw new Error(errM);
                 }
                 break;
             case "number[]":
-                if (!Array.isArray(item) ||
-                    !item.length ||
-                    !item.every((val) => typeof val === "number" && !isNaN(val))) {
-                    throw new Error(errM + ` ${dataType}`);
+                if (!(0, _1.isArray)(item) || !item.every((val) => (0, _1.isNumber)(val))) {
+                    throw new Error(errM);
                 }
                 break;
             case "number+[]":
-                if (!Array.isArray(item) ||
-                    !item.length ||
-                    !item.every((val) => typeof val === "number" && !isNaN(val) && val > -1)) {
-                    throw new Error(errM + ` ${dataType}`);
+                if (!(0, _1.isArray)(item) || !item.every((val) => (0, _1.isNumber)(val) && (0, _1.isPositiveNumber)(val))) {
+                    throw new Error(errM);
                 }
                 break;
             case "number-[]":
-                if (!Array.isArray(item) ||
-                    !item.length ||
-                    !item.every((val) => typeof val === "number" && !isNaN(val) && val < 1)) {
-                    throw new Error(errM + ` ${dataType}`);
+                if (!(0, _1.isArray)(item) || !item.every((val) => (0, _1.isNumber)(val) && (0, _1.isNegativeNumber)(val))) {
+                    throw new Error(errM);
                 }
                 break;
             case "boolean[]":
-                if (!Array.isArray(item) || !item.length || !item.every((val) => typeof val === "boolean")) {
-                    throw new Error(errM + ` ${dataType}`);
+                if (!(0, _1.isArray)(item) || !item.every((val) => (0, _1.isBoolean)(val))) {
+                    throw new Error(errM);
                 }
                 break;
             case "object":
-                if (typeof item !== "object" || !Object.values(item).length) {
-                    throw new Error(errM + ` ${dataType}`);
+                if (!(0, _1.isObject)(item)) {
+                    throw new Error(errM);
                 }
                 if (isExtendedRule(rule) && rule.rules) {
                     (0, exports.validator)(item, rule.rules);
                 }
                 break;
             default:
-                throw new Error(`${param} has unknown param`);
+                throw new Error(getErrorMessage("UNKNOWN_DATATYPE", param, typeof item));
         }
     }
     return data;
 };
 exports.validator = validator;
+const getErrorMessage = (code, ...v) => {
+    if (process.env.DEBUG === "true") {
+        switch (code) {
+            case "REQUIRED":
+                return `Param "${v[0]}" is required`;
+            case "WRONG_DATATYPE":
+                return `Param "${v[0]}" has wrong DataType. Expected "${v[1]}"`;
+            case "UNKNOWN_DATATYPE":
+                return `Param "${v[0]}" has unknown DataType. Received "${v[1]}"`;
+            default:
+                return "Unknown Validation Error";
+        }
+    }
+    return "Validation Error";
+};
 const isExtendedRule = (rule) => {
-    return rule.type !== undefined;
+    return rule.dataType !== undefined;
 };
 const getDatatType = (rule) => {
     if (isExtendedRule(rule)) {
-        return rule.type;
+        return rule.dataType;
     }
     return rule;
 };

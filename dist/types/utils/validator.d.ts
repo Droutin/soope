@@ -1,6 +1,6 @@
 declare type DataType = "string" | "number" | "number+" | "number-" | "boolean" | "array" | "string[]" | "number[]" | "number+[]" | "number-[]" | "boolean[]" | "array" | "object" | "string?" | "number?" | "number+?" | "number-?" | "boolean?" | "array?" | "string[]?" | "number[]?" | "number+[]?" | "number-[]?" | "boolean[]?" | "object?";
 interface Rule {
-    type: DataType;
+    dataType: DataType;
     rules?: Rules;
 }
 declare type Rules = Record<string, Rule | DataType>;

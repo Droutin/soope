@@ -1,7 +1,10 @@
 import { validator } from "../src/utils";
 
 describe("Validator functionality", () => {
-    it("complex approach", () => {
+    beforeEach(() => {
+        process.env.DEBUG = Math.random() >= 0.5 ? "true" : "false";
+    });
+    it("should pass validation", () => {
         const testCase = {
             name: "Lorem",
             price: 0,
@@ -15,7 +18,7 @@ describe("Validator functionality", () => {
             name: "string",
             price: "number+",
             metadata: {
-                type: "object",
+                dataType: "object",
                 rules: {
                     type: "string",
                     reviews: "number+[]",
@@ -25,27 +28,25 @@ describe("Validator functionality", () => {
         });
         expect(data).toBe(testCase);
     });
-    /* it("simple approach", () => {
+    it("should throw error due to missing required param", () => {
+        const testCase = {};
+        try {
+            validator(testCase, {
+                user: "string",
+            });
+        } catch (error) {
+            if (error instanceof Error) {
+                if (process.env.DEBUG === "true") {
+                    expect(error.message).toBe(`Param "user" is required`);
+                } else {
+                    expect(error.message).toBe("Validation Error");
+                }
+            }
+        }
+    });
+    it("should throw error due to wrong DataType", () => {
         const testCase = {
-            name: "Lorem",
-            price: 0,
-            metadata: {
-                type: "bike",
-            },
-            tags: ["city"],
-        };
-        const data = validator(testCase, {
-            name: "string",
-            price: "number",
-            metadata: "object",
-            tags: "array",
-        });
-
-        expect(data).toBe(testCase);
-    }); */
-    /* it("should throw error due to wrong payload", () => {
-        const testCase = {
-            name: "Lorem",
+            user: 1,
         };
         try {
             validator(testCase, {
@@ -53,31 +54,12 @@ describe("Validator functionality", () => {
             });
         } catch (error) {
             if (error instanceof Error) {
-                expect(error.message).toBe("unknown param");
+                if (process.env.DEBUG === "true") {
+                    expect(error.message).toBe(`Param "user" has wrong DataType. Expected "string"`);
+                } else {
+                    expect(error.message).toBe("Validation Error");
+                }
             }
         }
-    }); */
-    /* it("should return param with null", () => {
-        const testCase = {
-            name: null,
-        };
-        const data = validator(testCase, {
-            name: "string?",
-        });
-        expect(data).toBe(testCase);
-    }); */
-    /*  it("should throw error due to required param", () => {
-        const testCase = {
-            name: null,
-        };
-        try {
-            validator(testCase, {
-                name: { type: "string", required: true },
-            });
-        } catch (error) {
-            if (error instanceof Error) {
-                expect(error.message).toBe("name is required");
-            }
-        }
-    }); */
+    });
 });
