@@ -10,3 +10,5 @@ export { isString } from "./isString";
 export { isBoolean } from "./isBoolean";
 export { isArray } from "./isArray";
 export { isObject } from "./isObject";
+export { isDate } from "./isDate";
+export { isEmail } from "./isEmail";

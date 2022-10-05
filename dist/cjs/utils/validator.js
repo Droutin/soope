@@ -19,6 +19,16 @@ const validator = (data, rules) => {
                     throw new Error(errM);
                 }
                 break;
+            case "date":
+                if (!(0, _1.isString)(item) || !(0, _1.isDate)(item)) {
+                    throw new Error(errM);
+                }
+                break;
+            case "email":
+                if (!(0, _1.isString)(item) || !(0, _1.isEmail)(item)) {
+                    throw new Error(errM);
+                }
+                break;
             case "number":
                 if (!(0, _1.isNumber)(item)) {
                     throw new Error(errM);
@@ -44,8 +54,26 @@ const validator = (data, rules) => {
                     throw new Error(errM);
                 }
                 break;
+            case "object":
+                if (!(0, _1.isObject)(item)) {
+                    throw new Error(errM);
+                }
+                if (isExtendedRule(rule) && rule.rules) {
+                    (0, exports.validator)(item, rule.rules);
+                }
+                break;
             case "string[]":
                 if (!(0, _1.isArray)(item) || !item.every((val) => (0, _1.isString)(val))) {
+                    throw new Error(errM);
+                }
+                break;
+            case "date[]":
+                if (!(0, _1.isArray)(item) || !item.every((val) => (0, _1.isString)(val) && (0, _1.isDate)(val))) {
+                    throw new Error(errM);
+                }
+                break;
+            case "email[]":
+                if (!(0, _1.isArray)(item) || !item.every((val) => (0, _1.isString)(val) && (0, _1.isEmail)(val))) {
                     throw new Error(errM);
                 }
                 break;
@@ -69,12 +97,15 @@ const validator = (data, rules) => {
                     throw new Error(errM);
                 }
                 break;
-            case "object":
-                if (!(0, _1.isObject)(item)) {
+            case "object[]":
+                if (!(0, _1.isArray)(item) ||
+                    !item.every((val) => {
+                        if (isExtendedRule(rule) && rule.rules) {
+                            (0, exports.validator)(val, rule.rules);
+                        }
+                        return (0, _1.isObject)(val);
+                    })) {
                     throw new Error(errM);
-                }
-                if (isExtendedRule(rule) && rule.rules) {
-                    (0, exports.validator)(item, rule.rules);
                 }
                 break;
             default:

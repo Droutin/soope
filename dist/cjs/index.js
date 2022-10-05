@@ -8,6 +8,7 @@ const express_1 = __importDefault(require("express"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const on_finished_1 = __importDefault(require("on-finished"));
 const on_headers_1 = __importDefault(require("on-headers"));
+const error_stack_parser_1 = __importDefault(require("error-stack-parser"));
 dotenv_1.default.config();
 /**
  * Parts of Soope
@@ -217,10 +218,8 @@ class Soope {
             message: err.message,
         };
         logger.error(message.message);
+        logger.error(error_stack_parser_1.default.parse(err));
         logger.debug("data:", req.method === "GET" ? req.query : req.body);
-        if (process.env.DEBUG === "true") {
-            console.error(err.stack);
-        }
         return res.status(http).send(message);
     };
     /**

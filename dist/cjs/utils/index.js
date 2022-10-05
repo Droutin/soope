@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isObject = exports.isArray = exports.isBoolean = exports.isString = exports.isNegativeNumber = exports.isPositiveNumber = exports.isNumber = exports.validator = exports.toRegExp = exports.scanDir = exports.Logger = exports.entries = void 0;
+exports.isEmail = exports.isDate = exports.isObject = exports.isArray = exports.isBoolean = exports.isString = exports.isNegativeNumber = exports.isPositiveNumber = exports.isNumber = exports.validator = exports.toRegExp = exports.scanDir = exports.Logger = exports.entries = void 0;
 var entries_1 = require("./entries");
 Object.defineProperty(exports, "entries", { enumerable: true, get: function () { return entries_1.entries; } });
 var logger_1 = require("./logger");
@@ -25,3 +25,7 @@ var isArray_1 = require("./isArray");
 Object.defineProperty(exports, "isArray", { enumerable: true, get: function () { return isArray_1.isArray; } });
 var isObject_1 = require("./isObject");
 Object.defineProperty(exports, "isObject", { enumerable: true, get: function () { return isObject_1.isObject; } });
+var isDate_1 = require("./isDate");
+Object.defineProperty(exports, "isDate", { enumerable: true, get: function () { return isDate_1.isDate; } });
+var isEmail_1 = require("./isEmail");
+Object.defineProperty(exports, "isEmail", { enumerable: true, get: function () { return isEmail_1.isEmail; } });

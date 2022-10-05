@@ -1,4 +1,4 @@
-import { isString, isNumber, isPositiveNumber, isNegativeNumber, isBoolean, isArray, isObject } from ".";
+import { isString, isNumber, isPositiveNumber, isNegativeNumber, isBoolean, isArray, isObject, isEmail, isDate, } from ".";
 export const validator = (data, rules) => {
     for (const [param, rule] of Object.entries(rules)) {
         const item = data[param];
@@ -13,6 +13,16 @@ export const validator = (data, rules) => {
         switch (dataType.replace("?", "")) {
             case "string":
                 if (!isString(item)) {
+                    throw new Error(errM);
+                }
+                break;
+            case "date":
+                if (!isString(item) || !isDate(item)) {
+                    throw new Error(errM);
+                }
+                break;
+            case "email":
+                if (!isString(item) || !isEmail(item)) {
                     throw new Error(errM);
                 }
                 break;
@@ -41,8 +51,26 @@ export const validator = (data, rules) => {
                     throw new Error(errM);
                 }
                 break;
+            case "object":
+                if (!isObject(item)) {
+                    throw new Error(errM);
+                }
+                if (isExtendedRule(rule) && rule.rules) {
+                    validator(item, rule.rules);
+                }
+                break;
             case "string[]":
                 if (!isArray(item) || !item.every((val) => isString(val))) {
+                    throw new Error(errM);
+                }
+                break;
+            case "date[]":
+                if (!isArray(item) || !item.every((val) => isString(val) && isDate(val))) {
+                    throw new Error(errM);
+                }
+                break;
+            case "email[]":
+                if (!isArray(item) || !item.every((val) => isString(val) && isEmail(val))) {
                     throw new Error(errM);
                 }
                 break;
@@ -66,12 +94,15 @@ export const validator = (data, rules) => {
                     throw new Error(errM);
                 }
                 break;
-            case "object":
-                if (!isObject(item)) {
+            case "object[]":
+                if (!isArray(item) ||
+                    !item.every((val) => {
+                        if (isExtendedRule(rule) && rule.rules) {
+                            validator(val, rule.rules);
+                        }
+                        return isObject(val);
+                    })) {
                     throw new Error(errM);
-                }
-                if (isExtendedRule(rule) && rule.rules) {
-                    validator(item, rule.rules);
                 }
                 break;
             default:
