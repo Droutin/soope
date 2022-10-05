@@ -213,12 +213,15 @@ class Soope {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     errorHandler = (err, req, res, next) => {
         const http = 500;
+        const stack = error_stack_parser_1.default.parse(err);
         const message = {
             http,
             message: err.message,
         };
+        if (process.env.DEBUG === "true")
+            message.stack = stack;
         logger.error(message.message);
-        logger.error(error_stack_parser_1.default.parse(err));
+        logger.error(stack);
         logger.debug("data:", req.method === "GET" ? req.query : req.body);
         return res.status(http).send(message);
     };
