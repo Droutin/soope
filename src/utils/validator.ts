@@ -1,31 +1,51 @@
-import { isString, isNumber, isPositiveNumber, isNegativeNumber, isBoolean, isArray, isObject } from ".";
+import {
+    isString,
+    isNumber,
+    isPositiveNumber,
+    isNegativeNumber,
+    isBoolean,
+    isArray,
+    isObject,
+    isEmail,
+    isDate,
+} from ".";
 
 type DataType =
     | "string"
+    | "email"
+    | "date"
     | "number"
     | "number+"
     | "number-"
     | "boolean"
     | "array"
     | "string[]"
+    | "email[]"
+    | "date[]"
     | "number[]"
     | "number+[]"
     | "number-[]"
     | "boolean[]"
     | "array"
     | "object"
+    | "object[]"
     | "string?"
+    | "email?"
+    | "date?"
     | "number?"
     | "number+?"
     | "number-?"
     | "boolean?"
     | "array?"
     | "string[]?"
+    | "email[]?"
+    | "date[]?"
     | "number[]?"
     | "number+[]?"
     | "number-[]?"
     | "boolean[]?"
-    | "object?";
+    | "object?"
+    | "object[]?";
 interface Rule {
     dataType: DataType;
     rules?: Rules;
@@ -48,6 +68,16 @@ export const validator = (data: Record<string, unknown>, rules: Rules) => {
         switch (dataType.replace("?", "") as DataType) {
             case "string":
                 if (!isString(item)) {
+                    throw new Error(errM);
+                }
+                break;
+            case "date":
+                if (!isString(item) || !isDate(item)) {
+                    throw new Error(errM);
+                }
+                break;
+            case "email":
+                if (!isString(item) || !isEmail(item)) {
                     throw new Error(errM);
                 }
                 break;
@@ -76,8 +106,26 @@ export const validator = (data: Record<string, unknown>, rules: Rules) => {
                     throw new Error(errM);
                 }
                 break;
+            case "object":
+                if (!isObject(item)) {
+                    throw new Error(errM);
+                }
+                if (isExtendedRule(rule) && rule.rules) {
+                    validator(item, rule.rules);
+                }
+                break;
             case "string[]":
                 if (!isArray(item) || !item.every((val) => isString(val))) {
+                    throw new Error(errM);
+                }
+                break;
+            case "date[]":
+                if (!isArray(item) || !item.every((val) => isString(val) && isDate(val))) {
+                    throw new Error(errM);
+                }
+                break;
+            case "email[]":
+                if (!isArray(item) || !item.every((val) => isString(val) && isEmail(val))) {
                     throw new Error(errM);
                 }
                 break;
@@ -101,13 +149,19 @@ export const validator = (data: Record<string, unknown>, rules: Rules) => {
                     throw new Error(errM);
                 }
                 break;
-            case "object":
-                if (!isObject(item)) {
+            case "object[]":
+                if (
+                    !isArray(item) ||
+                    !item.every((val) => {
+                        if (isExtendedRule(rule) && rule.rules) {
+                            validator(val as Record<string, unknown>, rule.rules);
+                        }
+                        return isObject(val);
+                    })
+                ) {
                     throw new Error(errM);
                 }
-                if (isExtendedRule(rule) && rule.rules) {
-                    validator(item, rule.rules);
-                }
+
                 break;
             default:
                 throw new Error(getErrorMessage("UNKNOWN_DATATYPE", param, typeof item));

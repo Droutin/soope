@@ -4,6 +4,7 @@ import type { ServerResponse, IncomingMessage } from "http";
 import dotenv from "dotenv";
 import onFinished from "on-finished";
 import onHeaders from "on-headers";
+import ErrorStackParser from "error-stack-parser";
 
 dotenv.config();
 
@@ -248,10 +249,8 @@ export class Soope {
             message: err.message,
         };
         logger.error(message.message);
+        logger.error(ErrorStackParser.parse(err));
         logger.debug("data:", req.method === "GET" ? req.query : req.body);
-        if (process.env.DEBUG === "true") {
-            console.error(err.stack);
-        }
         return res.status(http).send(message);
     };
     /**
