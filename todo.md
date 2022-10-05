@@ -1,0 +1,4 @@
+-   [ ] initRoute refactor
+-   [ ] CRUD Router with only preddefined methods
+-   [ ] On start/construct of Logger remove old logs. Interval defined in ENV LOG_KEEP=number
+-   [ ] Final clean up/refactor before production version

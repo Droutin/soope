@@ -416,8 +416,8 @@ export class Soope {
                 "/",
                 this.requestHandler((req, res) => {
                     return res.send({
-                        name: process.env.npm_package_name ?? "Service",
-                        version: process.env.npm_package_version ?? "1.0.0",
+                        name: process.env.npm_package_name || "Service",
+                        version: process.env.npm_package_version || "1.0.0",
                     });
                 })
             );
@@ -450,9 +450,9 @@ export class Soope {
                 switch (error.message) {
                     case "1":
                         return 0;
-                    /* return logger.error("cant access dir:", this.root + this.dirs.routes); */
+                    /* return logger.error("cant access dir:", this.root + this.dirs.middlewares); */
                     case "2":
-                        return logger.warn("there is no middlewares in:", this.root + this.dirs.routes);
+                        return logger.warn("there is no middlewares in:", this.root + this.dirs.middlewares);
                 }
             }
             logger.error(error);
