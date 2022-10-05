@@ -304,6 +304,7 @@ class Soope {
             if (this.usedPaths.includes(path)) {
                 throw new Error(`${path} is in use`);
             }
+            console.log(path);
             this.usedPaths.push(path);
             logger.trace(`route ${endpoint || "/"} [${method.toUpperCase()}] from ${className}.${property} hooked`);
             if (middleware.length) {

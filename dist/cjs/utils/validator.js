@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.validator = void 0;
 const _1 = require(".");
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const validator = (data, rules) => {
     for (const [param, rule] of Object.entries(rules)) {
         const item = data[param];

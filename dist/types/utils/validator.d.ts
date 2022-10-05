@@ -4,5 +4,5 @@ interface Rule {
     rules?: Rules;
 }
 declare type Rules = Record<string, Rule | DataType>;
-export declare const validator: (data: Record<string, unknown>, rules: Rules) => Record<string, unknown>;
+export declare const validator: (data: Record<string, any>, rules: Rules) => Record<string, any>;
 export default validator;

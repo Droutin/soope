@@ -53,7 +53,8 @@ interface Rule {
 type Rules = Record<string, Rule | DataType>;
 type ErrorCode = "REQUIRED" | "WRONG_DATATYPE" | "UNKNOWN_DATATYPE";
 
-export const validator = (data: Record<string, unknown>, rules: Rules) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const validator = (data: Record<string, any>, rules: Rules) => {
     for (const [param, rule] of Object.entries(rules)) {
         const item = data[param];
         const dataType = getDatatType(rule);
@@ -161,7 +162,6 @@ export const validator = (data: Record<string, unknown>, rules: Rules) => {
                 ) {
                     throw new Error(errM);
                 }
-
                 break;
             default:
                 throw new Error(getErrorMessage("UNKNOWN_DATATYPE", param, typeof item));
