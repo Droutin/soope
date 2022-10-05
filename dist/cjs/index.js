@@ -298,15 +298,15 @@ class Soope {
                 }
             }
         }
+        endpoint = endpoint || "/";
         const handlerStack = [...middleware, this.requestHandler(handler.bind(route))];
         methods.forEach((method) => {
             const path = `${method.toUpperCase()}-${endpoint}`;
             if (this.usedPaths.includes(path)) {
                 throw new Error(`${path} is in use`);
             }
-            console.log(path);
             this.usedPaths.push(path);
-            logger.trace(`route ${endpoint || "/"} [${method.toUpperCase()}] from ${className}.${property} hooked`);
+            logger.trace(`route ${endpoint} [${method.toUpperCase()}] from ${className}.${property} hooked`);
             if (middleware.length) {
                 logger.trace(`scoped Middleware '${middlewareName}' hooked`);
             }
@@ -353,7 +353,12 @@ class Soope {
                     }
                 }
                 catch (error) {
-                    throw new Error(`no default export in route: ${filePath}`);
+                    if (error instanceof Error) {
+                        if (error.message === "Route is not a constructor") {
+                            throw new Error(`no default export in route: ${filePath}`);
+                        }
+                        throw error;
+                    }
                 }
             }
         }
@@ -371,10 +376,11 @@ class Soope {
         if (!this.usedPaths.includes("GET-/")) {
             exports.router.get("/", this.requestHandler((req, res) => {
                 return res.send({
-                    name: process.env.npm_package_name || "Service",
-                    version: process.env.npm_package_version || "1.0.0",
+                    name: process.env.npm_package_name ?? "Service",
+                    version: process.env.npm_package_version ?? "1.0.0",
                 });
             }));
+            logger.trace(`default homepage hooked`);
         }
         exports.app.use(exports.router);
     }

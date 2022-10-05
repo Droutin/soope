@@ -1,5 +1,4 @@
 import { isString, isNumber, isPositiveNumber, isNegativeNumber, isBoolean, isArray, isObject, isEmail, isDate, } from ".";
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const validator = (data, rules) => {
     for (const [param, rule] of Object.entries(rules)) {
         const item = data[param];

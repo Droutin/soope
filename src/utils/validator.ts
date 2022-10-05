@@ -1,3 +1,4 @@
+import type { Rules, Rule, DataType } from "../types";
 import {
     isString,
     isNumber,
@@ -10,51 +11,9 @@ import {
     isDate,
 } from ".";
 
-type DataType =
-    | "string"
-    | "email"
-    | "date"
-    | "number"
-    | "number+"
-    | "number-"
-    | "boolean"
-    | "array"
-    | "string[]"
-    | "email[]"
-    | "date[]"
-    | "number[]"
-    | "number+[]"
-    | "number-[]"
-    | "boolean[]"
-    | "array"
-    | "object"
-    | "object[]"
-    | "string?"
-    | "email?"
-    | "date?"
-    | "number?"
-    | "number+?"
-    | "number-?"
-    | "boolean?"
-    | "array?"
-    | "string[]?"
-    | "email[]?"
-    | "date[]?"
-    | "number[]?"
-    | "number+[]?"
-    | "number-[]?"
-    | "boolean[]?"
-    | "object?"
-    | "object[]?";
-interface Rule {
-    dataType: DataType;
-    rules?: Rules;
-}
-type Rules = Record<string, Rule | DataType>;
 type ErrorCode = "REQUIRED" | "WRONG_DATATYPE" | "UNKNOWN_DATATYPE";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const validator = (data: Record<string, any>, rules: Rules) => {
+export const validator = <T extends Record<string, unknown>>(data: T, rules: Rules) => {
     for (const [param, rule] of Object.entries(rules)) {
         const item = data[param];
         const dataType = getDatatType(rule);
