@@ -1,4 +1,4 @@
-import { readdir, access, constants } from "fs/promises";
+import { access, constants, readdir } from "fs/promises";
 const allowedExts = ["js", "ts", "mjs", "cjs"];
 export const scanDir = async (root, dir) => {
     const relativePaths = [];
@@ -6,13 +6,13 @@ export const scanDir = async (root, dir) => {
         await access(root + dir, constants.W_OK | constants.R_OK);
     }
     catch {
-        throw new Error("1");
+        throw new Error(`cant access dir: ${root + dir}`);
     }
     const dirs = await readdir(root + dir, {
         withFileTypes: true,
     });
     if (!dirs.length) {
-        throw new Error("2");
+        throw new Error(`there is no files in: ${root + dir}`);
     }
     for (const file of dirs) {
         const name = file.name;

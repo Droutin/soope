@@ -1,6 +1,10 @@
+export { DecoratedRoute } from "./decoratedRoute";
+export { DecoratedRouteHandler } from "./decoratedRouteHandler";
 export { Dirs } from "./dirs";
 export { Hooks } from "./hooks";
-export { Methods } from "./methods";
+export { Method } from "./method";
+export { Middleware } from "./middleware";
+export { MiddlewareHandler } from "./middlewareHandler";
 export { Route } from "./route";
 export { RouteParams } from "./routeParams";
-export { Rule, Rules, DataType } from "./validator";
+export { DataType, Rule, Rules } from "./validator";

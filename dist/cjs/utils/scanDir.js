@@ -9,13 +9,13 @@ const scanDir = async (root, dir) => {
         await (0, promises_1.access)(root + dir, promises_1.constants.W_OK | promises_1.constants.R_OK);
     }
     catch {
-        throw new Error("1");
+        throw new Error(`cant access dir: ${root + dir}`);
     }
     const dirs = await (0, promises_1.readdir)(root + dir, {
         withFileTypes: true,
     });
     if (!dirs.length) {
-        throw new Error("2");
+        throw new Error(`there is no files in: ${root + dir}`);
     }
     for (const file of dirs) {
         const name = file.name;

@@ -1,5 +1,5 @@
-import type Methods from "./methods";
 import type { RequestHandler } from "express";
+import type Methods from "./method";
 export interface DecoratedRoute {
     path: string;
     property: string;

@@ -1,6 +1,6 @@
-import type Methods from "./methods";
+import type { Method, MiddlewareHandler } from ".";
 export interface RouteParams {
-    methods?: Methods[];
-    middleware?: string | CallableFunction;
+    method?: Method | Method[];
+    middleware?: MiddlewareHandler | MiddlewareHandler[];
 }
 export default RouteParams;
