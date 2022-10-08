@@ -1,7 +1,7 @@
 import { isArray, isString } from "../utils";
 export const Route = (path, params) => {
     const decorator = (_target, property, descriptor) => {
-        let methods = ["GET"];
+        let methods = undefined;
         if (params?.method) {
             if (isString(params.method)) {
                 methods = [params.method];
@@ -23,7 +23,7 @@ export const Route = (path, params) => {
             path,
             property,
             fn: descriptor.value,
-            methods: methods.map((method) => method.toLowerCase()),
+            methods: methods?.map((method) => method.toLowerCase()),
             middlewares: middlewares,
         };
         return descriptor;

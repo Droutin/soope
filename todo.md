@@ -2,7 +2,8 @@
 -   [x] CRUD Router with only preddefined methods
 -   [x] Change @Route methods to method with optional Array
 -   [x] Change @Route middleware to optional Array
--   [ ] Paginator middleware req.paginator
+-   [x] Fix @Path and @CRUD
+-   [x] Paginator middleware req.paginator
 -   [ ] Add access control
 -   [ ] On start/construct of Logger remove old logs. Interval defined in ENV LOG_KEEP=number
 -   [ ] Final clean up/refactor before production version

@@ -5,7 +5,7 @@ export interface DecoratedRouteHandler {
     path: string;
     property: string;
     fn: RequestHandler;
-    methods: Lowercase<Method>[];
+    methods?: Lowercase<Method>[];
     middlewares: MiddlewareHandler[];
 }
 export default DecoratedRouteHandler;

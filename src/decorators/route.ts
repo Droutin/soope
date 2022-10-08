@@ -3,7 +3,7 @@ import { isArray, isString } from "../utils";
 
 export const Route = (path: string, params?: RouteParams) => {
     const decorator = (_target: unknown, property: string, descriptor: PropertyDescriptor) => {
-        let methods: Method[] = ["GET"];
+        let methods: Method[] | undefined = undefined;
         if (params?.method) {
             if (isString(params.method)) {
                 methods = [params.method];
@@ -25,7 +25,7 @@ export const Route = (path: string, params?: RouteParams) => {
             path,
             property,
             fn: descriptor.value,
-            methods: methods.map((method) => method.toLowerCase()),
+            methods: methods?.map((method) => method.toLowerCase()),
             middlewares: middlewares,
         } as DecoratedRouteHandler;
         return descriptor;

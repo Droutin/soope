@@ -5,6 +5,7 @@ export { Hooks } from "./hooks";
 export { Method } from "./method";
 export { Middleware } from "./middleware";
 export { MiddlewareHandler } from "./middlewareHandler";
+export { Pagination } from "./pagination";
 export { Route } from "./route";
 export { RouteParams } from "./routeParams";
 export { DataType, Rule, Rules } from "./validator";

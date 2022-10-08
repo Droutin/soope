@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import type { NextFunction, Request, Response } from "express";
 import Express from "express";
-import type { Dirs, Hooks } from "./types";
+import type { Dirs, Hooks, Pagination } from "./types";
 export type { Express, NextFunction, Request, RequestHandler, Response } from "express";
 export declare const express: typeof Express;
 export declare const app: import("express-serve-static-core").Express;
@@ -150,3 +150,17 @@ export declare class Soope {
     useMiddleware(name: string): void;
 }
 export default Soope;
+declare global {
+    namespace Express {
+        interface Response {
+            sendPagination: (this: Response, { count, maxPage, currentPage }: {
+                count: number;
+                maxPage: number;
+                currentPage: number;
+            }) => void;
+        }
+        interface Request {
+            pagination?: Pagination;
+        }
+    }
+}

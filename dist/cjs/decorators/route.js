@@ -4,7 +4,7 @@ exports.Route = void 0;
 const utils_1 = require("../utils");
 const Route = (path, params) => {
     const decorator = (_target, property, descriptor) => {
-        let methods = ["GET"];
+        let methods = undefined;
         if (params?.method) {
             if ((0, utils_1.isString)(params.method)) {
                 methods = [params.method];
@@ -26,7 +26,7 @@ const Route = (path, params) => {
             path,
             property,
             fn: descriptor.value,
-            methods: methods.map((method) => method.toLowerCase()),
+            methods: methods?.map((method) => method.toLowerCase()),
             middlewares: middlewares,
         };
         return descriptor;

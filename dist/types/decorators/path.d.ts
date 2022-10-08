@@ -1,5 +1,2 @@
-import type { DecoratedRoute } from "../types";
-export declare const Path: (path: string) => (ctr: {
-    prototype: DecoratedRoute;
-}) => void;
+export declare const Path: (path: string) => (ctr: Function) => void;
 export default Path;

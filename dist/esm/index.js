@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-namespace */
 import dotenv from "dotenv";
 import ErrorStackParser from "error-stack-parser";
 import Express from "express";
@@ -5,6 +6,7 @@ import onFinished from "on-finished";
 import onHeaders from "on-headers";
 import { entries, isString, Logger, scanDir } from "./utils";
 dotenv.config();
+/* export type { Request, Response } from "./types"; */
 export const express = Express;
 export const app = express();
 export const router = express.Router();
@@ -32,6 +34,31 @@ const logAccess = (req, res, next) => {
     });
     return next();
 };
+const parsePagination = (req) => {
+    const data = {
+        page: req.get("X-Page"),
+        perPage: req.get("X-PerPage"),
+        orderBy: req.get("X-OrderBy"),
+    };
+    if (Object.values(data).filter(Boolean).length === 3) {
+        const pagination = {
+            page: parseInt(data.page),
+            perPage: parseInt(data.perPage),
+            orderBy: data.orderBy?.split(",").map((item) => {
+                const rule = item.split(":");
+                return {
+                    [rule[0]]: rule[1],
+                };
+            }) || {},
+        };
+        req.pagination = pagination;
+    }
+};
+function sendPagination({ count, maxPage, currentPage }) {
+    this.setHeader("X-Count", count);
+    this.setHeader("X-MaxPage", maxPage);
+    this.setHeader("X-CurrentPage", currentPage);
+}
 export class Soope {
     params = new Map();
     hooks = {
@@ -65,9 +92,13 @@ export class Soope {
             res.removeHeader("Server");
             res.removeHeader("Via");
             res.removeHeader("X-Powered-By");
+            res.sendPagination = sendPagination.bind(res);
+            parsePagination(req);
             return next();
         });
-        app.use(logAccess);
+        if (process.env.LOG_LEVELS?.match(/(trace|all)/)) {
+            app.use(logAccess);
+        }
     }
     /**
      *
@@ -263,22 +294,24 @@ export class Soope {
         let path = pathArray[0];
         if (endpoint)
             path = path.replace(/\/[^/]*$/, endpoint);
-        return path === "/index" ? "/" : path;
+        return path.endsWith("/index") ? path.replace("/index", "/") : path;
     }
     isDecoratedHandler(handler) {
         return typeof handler !== "function";
     }
-    initRoute(className, route, handler, path, method = "get") {
+    initRoute(className, route, handler, path, method = "get", crudPath) {
         let endpoint = path.endsWith("/") && path.length > 1 ? path.slice(0, -1) : path;
         let property;
         let reqHandler;
-        let methods;
+        let methods = [method];
         const middlewares = [];
         if (this.isDecoratedHandler(handler)) {
             endpoint += handler.path;
             property = handler.property;
             reqHandler = handler.fn;
-            methods = handler.methods;
+            if (handler.methods) {
+                methods = handler.methods;
+            }
             const usedMiddlewares = [];
             handler.middlewares.forEach((middleware) => {
                 let middlewareName;
@@ -317,9 +350,11 @@ export class Soope {
             });
         }
         else {
+            if (crudPath) {
+                endpoint += crudPath;
+            }
             property = handler.name;
             reqHandler = handler;
-            methods = [method];
         }
         const handlerStack = [...middlewares, this.requestHandler(reqHandler.bind(route))];
         methods.forEach((method) => {
@@ -371,11 +406,26 @@ export class Soope {
         }
     }
     cruds = {
-        index: "get",
-        show: "get",
-        store: "post",
-        update: "patch",
-        destroy: "delete",
+        index: {
+            method: "get",
+            path: "/",
+        },
+        show: {
+            method: "get",
+            path: "/:id",
+        },
+        store: {
+            method: "post",
+            path: "/",
+        },
+        update: {
+            method: "patch",
+            path: "/:id",
+        },
+        destroy: {
+            method: "delete",
+            path: "/:id",
+        },
     };
     async initRoutes() {
         await this.autoImport(this.dirs.routes, (Route, className, filePath, dir) => {
@@ -385,8 +435,8 @@ export class Soope {
             if (route?.crud) {
                 entries(this.cruds)
                     .filter(([crudHandler]) => handlers.includes(crudHandler))
-                    .forEach(([crudHandler, method]) => {
-                    this.initRoute(className, route, route[crudHandler], path, method);
+                    .forEach(([crudHandler, obj]) => {
+                    this.initRoute(className, route, route[crudHandler], path, obj.method, obj.path);
                 });
             }
             else {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-namespace */
 import dotenv from "dotenv";
 import ErrorStackParser from "error-stack-parser";
 import type { NextFunction, Request, RequestHandler, Response } from "express";
@@ -5,7 +6,7 @@ import Express from "express";
 import type { IncomingMessage, ServerResponse } from "http";
 import onFinished from "on-finished";
 import onHeaders from "on-headers";
-import type { DecoratedRoute, DecoratedRouteHandler, Dirs, Hooks, Method, Middleware } from "./types";
+import type { DecoratedRoute, DecoratedRouteHandler, Dirs, Hooks, Method, Middleware, Pagination } from "./types";
 import { entries, isString, Logger, scanDir } from "./utils";
 
 dotenv.config();
@@ -13,6 +14,7 @@ dotenv.config();
 type THandler = DecoratedRouteHandler | RequestHandler;
 
 export type { Express, NextFunction, Request, RequestHandler, Response } from "express";
+/* export type { Request, Response } from "./types"; */
 export const express = Express;
 export const app = express();
 export const router = express.Router();
@@ -53,6 +55,37 @@ const logAccess = (req: AccessRequest, res: AccessResponse, next: NextFunction) 
     return next();
 };
 
+const parsePagination = (req: Request) => {
+    const data = {
+        page: req.get("X-Page"),
+        perPage: req.get("X-PerPage"),
+        orderBy: req.get("X-OrderBy"),
+    };
+    if (Object.values(data).filter(Boolean).length === 3) {
+        const pagination = {
+            page: parseInt(data.page as string),
+            perPage: parseInt(data.perPage as string),
+            orderBy:
+                data.orderBy?.split(",").map((item) => {
+                    const rule = item.split(":");
+                    return {
+                        [rule[0]]: rule[1],
+                    };
+                }) || {},
+        } as Pagination;
+        req.pagination = pagination;
+    }
+};
+
+function sendPagination(
+    this: Response,
+    { count, maxPage, currentPage }: { count: number; maxPage: number; currentPage: number }
+) {
+    this.setHeader("X-Count", count);
+    this.setHeader("X-MaxPage", maxPage);
+    this.setHeader("X-CurrentPage", currentPage);
+}
+
 export class Soope {
     private params = new Map();
     private hooks: Hooks = {
@@ -89,9 +122,15 @@ export class Soope {
             res.removeHeader("Via");
             res.removeHeader("X-Powered-By");
 
+            res.sendPagination = sendPagination.bind(res);
+
+            parsePagination(req);
+
             return next();
         });
-        app.use(logAccess);
+        if (process.env.LOG_LEVELS?.match(/(trace|all)/)) {
+            app.use(logAccess);
+        }
     }
 
     /**
@@ -298,23 +337,32 @@ export class Soope {
         let path = pathArray[0];
 
         if (endpoint) path = path.replace(/\/[^/]*$/, endpoint);
-        return path === "/index" ? "/" : path;
+        return path.endsWith("/index") ? path.replace("/index", "/") : path;
     }
     private isDecoratedHandler(handler: THandler): handler is DecoratedRouteHandler {
         return typeof handler !== "function";
     }
-    private initRoute(className: string, route: DecoratedRoute, handler: THandler, path: string, method = "get") {
+    private initRoute(
+        className: string,
+        route: DecoratedRoute,
+        handler: THandler,
+        path: string,
+        method = "get",
+        crudPath?: string
+    ) {
         let endpoint = path.endsWith("/") && path.length > 1 ? path.slice(0, -1) : path;
         let property: string;
         let reqHandler: RequestHandler;
-        let methods: Lowercase<Method>[];
+        let methods = [method] as Lowercase<Method>[];
         const middlewares: RequestHandler[] = [];
 
         if (this.isDecoratedHandler(handler)) {
             endpoint += handler.path;
             property = handler.property;
             reqHandler = handler.fn;
-            methods = handler.methods;
+            if (handler.methods) {
+                methods = handler.methods;
+            }
 
             const usedMiddlewares: string[] = [];
 
@@ -355,9 +403,11 @@ export class Soope {
                 }
             });
         } else {
+            if (crudPath) {
+                endpoint += crudPath;
+            }
             property = handler.name;
             reqHandler = handler;
-            methods = [method] as Lowercase<Method>[];
         }
 
         const handlerStack = [...middlewares, this.requestHandler(reqHandler.bind(route))];
@@ -418,11 +468,26 @@ export class Soope {
         }
     }
     private cruds = {
-        index: "get",
-        show: "get",
-        store: "post",
-        update: "patch",
-        destroy: "delete",
+        index: {
+            method: "get",
+            path: "/",
+        },
+        show: {
+            method: "get",
+            path: "/:id",
+        },
+        store: {
+            method: "post",
+            path: "/",
+        },
+        update: {
+            method: "patch",
+            path: "/:id",
+        },
+        destroy: {
+            method: "delete",
+            path: "/:id",
+        },
     };
     private async initRoutes() {
         await this.autoImport(this.dirs.routes, (Route, className, filePath, dir) => {
@@ -435,8 +500,8 @@ export class Soope {
             if (route?.crud) {
                 entries(this.cruds)
                     .filter(([crudHandler]) => handlers.includes(crudHandler))
-                    .forEach(([crudHandler, method]) => {
-                        this.initRoute(className, route, route[crudHandler] as THandler, path, method);
+                    .forEach(([crudHandler, obj]) => {
+                        this.initRoute(className, route, route[crudHandler] as THandler, path, obj.method, obj.path);
                     });
             } else {
                 handlers.forEach((handler) => {
@@ -498,3 +563,16 @@ export class Soope {
 }
 
 export default Soope;
+declare global {
+    namespace Express {
+        export interface Response {
+            sendPagination: (
+                this: Response,
+                { count, maxPage, currentPage }: { count: number; maxPage: number; currentPage: number }
+            ) => void;
+        }
+        export interface Request {
+            pagination?: Pagination;
+        }
+    }
+}

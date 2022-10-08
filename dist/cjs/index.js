@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Soope = exports.router = exports.app = exports.express = void 0;
+/* eslint-disable @typescript-eslint/no-namespace */
 const dotenv_1 = __importDefault(require("dotenv"));
 const error_stack_parser_1 = __importDefault(require("error-stack-parser"));
 const express_1 = __importDefault(require("express"));
@@ -11,6 +12,7 @@ const on_finished_1 = __importDefault(require("on-finished"));
 const on_headers_1 = __importDefault(require("on-headers"));
 const utils_1 = require("./utils");
 dotenv_1.default.config();
+/* export type { Request, Response } from "./types"; */
 exports.express = express_1.default;
 exports.app = (0, exports.express)();
 exports.router = exports.express.Router();
@@ -38,6 +40,31 @@ const logAccess = (req, res, next) => {
     });
     return next();
 };
+const parsePagination = (req) => {
+    const data = {
+        page: req.get("X-Page"),
+        perPage: req.get("X-PerPage"),
+        orderBy: req.get("X-OrderBy"),
+    };
+    if (Object.values(data).filter(Boolean).length === 3) {
+        const pagination = {
+            page: parseInt(data.page),
+            perPage: parseInt(data.perPage),
+            orderBy: data.orderBy?.split(",").map((item) => {
+                const rule = item.split(":");
+                return {
+                    [rule[0]]: rule[1],
+                };
+            }) || {},
+        };
+        req.pagination = pagination;
+    }
+};
+function sendPagination({ count, maxPage, currentPage }) {
+    this.setHeader("X-Count", count);
+    this.setHeader("X-MaxPage", maxPage);
+    this.setHeader("X-CurrentPage", currentPage);
+}
 class Soope {
     params = new Map();
     hooks = {
@@ -71,9 +98,13 @@ class Soope {
             res.removeHeader("Server");
             res.removeHeader("Via");
             res.removeHeader("X-Powered-By");
+            res.sendPagination = sendPagination.bind(res);
+            parsePagination(req);
             return next();
         });
-        exports.app.use(logAccess);
+        if (process.env.LOG_LEVELS?.match(/(trace|all)/)) {
+            exports.app.use(logAccess);
+        }
     }
     /**
      *
@@ -269,22 +300,24 @@ class Soope {
         let path = pathArray[0];
         if (endpoint)
             path = path.replace(/\/[^/]*$/, endpoint);
-        return path === "/index" ? "/" : path;
+        return path.endsWith("/index") ? path.replace("/index", "/") : path;
     }
     isDecoratedHandler(handler) {
         return typeof handler !== "function";
     }
-    initRoute(className, route, handler, path, method = "get") {
+    initRoute(className, route, handler, path, method = "get", crudPath) {
         let endpoint = path.endsWith("/") && path.length > 1 ? path.slice(0, -1) : path;
         let property;
         let reqHandler;
-        let methods;
+        let methods = [method];
         const middlewares = [];
         if (this.isDecoratedHandler(handler)) {
             endpoint += handler.path;
             property = handler.property;
             reqHandler = handler.fn;
-            methods = handler.methods;
+            if (handler.methods) {
+                methods = handler.methods;
+            }
             const usedMiddlewares = [];
             handler.middlewares.forEach((middleware) => {
                 let middlewareName;
@@ -323,9 +356,11 @@ class Soope {
             });
         }
         else {
+            if (crudPath) {
+                endpoint += crudPath;
+            }
             property = handler.name;
             reqHandler = handler;
-            methods = [method];
         }
         const handlerStack = [...middlewares, this.requestHandler(reqHandler.bind(route))];
         methods.forEach((method) => {
@@ -377,11 +412,26 @@ class Soope {
         }
     }
     cruds = {
-        index: "get",
-        show: "get",
-        store: "post",
-        update: "patch",
-        destroy: "delete",
+        index: {
+            method: "get",
+            path: "/",
+        },
+        show: {
+            method: "get",
+            path: "/:id",
+        },
+        store: {
+            method: "post",
+            path: "/",
+        },
+        update: {
+            method: "patch",
+            path: "/:id",
+        },
+        destroy: {
+            method: "delete",
+            path: "/:id",
+        },
     };
     async initRoutes() {
         await this.autoImport(this.dirs.routes, (Route, className, filePath, dir) => {
@@ -391,8 +441,8 @@ class Soope {
             if (route?.crud) {
                 (0, utils_1.entries)(this.cruds)
                     .filter(([crudHandler]) => handlers.includes(crudHandler))
-                    .forEach(([crudHandler, method]) => {
-                    this.initRoute(className, route, route[crudHandler], path, method);
+                    .forEach(([crudHandler, obj]) => {
+                    this.initRoute(className, route, route[crudHandler], path, obj.method, obj.path);
                 });
             }
             else {
