@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import ErrorStackParser from "error-stack-parser";
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import Express from "express";
+import { readFile } from "fs/promises";
 import type { IncomingMessage, ServerResponse } from "http";
 import onFinished from "on-finished";
 import onHeaders from "on-headers";
@@ -55,27 +56,43 @@ const logAccess = (req: AccessRequest, res: AccessResponse, next: NextFunction) 
     return next();
 };
 
-const parsePagination = (req: Request) => {
-    const data = {
-        page: req.get("X-Page"),
-        perPage: req.get("X-PerPage"),
-        orderBy: req.get("X-OrderBy"),
-    };
-    if (Object.values(data).filter(Boolean).length === 3) {
-        const pagination = {
-            page: parseInt(data.page as string),
-            perPage: parseInt(data.perPage as string),
-            orderBy:
-                data.orderBy?.split(",").map((item) => {
-                    const rule = item.split(":");
-                    return {
-                        [rule[0]]: rule[1],
-                    };
-                }) || {},
-        } as Pagination;
-        req.pagination = pagination;
+const isOrderByValid = (orderBy: string) => {
+    const rules = orderBy.split(",");
+    const matches = orderBy.match(/:/g);
+    if (matches && matches.length !== rules.length) {
+        throw new Error("Wrong orderBy rule joiner. Use ','");
     }
+    const valid = rules.every((item) => {
+        const rule = item.split(":");
+        if (rule.length !== 2) {
+            throw new Error("Wrong orderBy rule format. Use 'column:ASC|DESC'");
+        }
+        if (!rule[1].match(/(ASC|DESC)/)) {
+            throw new Error("Wrong orderBy rule sort. Use 'ASC|DESC'");
+        }
+        return true;
+    });
+    return valid;
 };
+
+function parsePagination(this: Request, { page, perPage, orderBy }: Pagination) {
+    const pagination: Pagination = {
+        page: this.get("X-Page") ? parseInt(this.get("X-Page") as string) : page,
+        perPage: this.get("X-PerPage") ? parseInt(this.get("X-PerPage") as string) : perPage,
+    };
+    const stringOrderBy = this.get("X-OrderBy");
+    if (stringOrderBy && isOrderByValid(stringOrderBy)) {
+        const parsedOrderBy: Record<string, "ASC" | "DESC"> = {};
+        stringOrderBy.split(",").forEach((item) => {
+            const rule = item.split(":");
+            parsedOrderBy[rule[0]] = rule[1] as "ASC" | "DESC";
+        });
+        pagination.orderBy = parsedOrderBy;
+    } else {
+        pagination.orderBy = orderBy;
+    }
+    return pagination;
+}
 
 function sendPagination(
     this: Response,
@@ -85,6 +102,69 @@ function sendPagination(
     this.setHeader("X-MaxPage", maxPage);
     this.setHeader("X-CurrentPage", currentPage);
 }
+
+const fixUri = (uri: string) => {
+    if (uri[0] !== "/") {
+        return "/" + uri;
+    }
+    return uri;
+};
+
+const accessControl = async (file: string, uri: string, method: string): Promise<string> => {
+    let accessType = "DEFAULT";
+
+    try {
+        const accessJson = (await readFile(file)).toString();
+        const accessObj = JSON.parse(accessJson);
+        for (const item of accessObj) {
+            item.uri = Array.isArray(item.uri) ? item.uri.map((i: string) => fixUri(i)) : [fixUri(item.uri)];
+            item.method = Array.isArray(item.method)
+                ? item.method.map((i: string) => i.toUpperCase())
+                : [item.method.toUpperCase()];
+            if (!item.uri.includes(uri)) {
+                if (!item.uri.some((i: string) => i.endsWith("*"))) {
+                    continue;
+                }
+                const sUri = uri.split("/");
+                let found = false;
+
+                item.uri.forEach((x: string) => {
+                    x = x.slice(0, -2);
+                    const sx = x.split("/");
+                    found = false;
+                    let oldFound = false;
+                    sx.forEach((y, i) => {
+                        if (y === sUri[i]) {
+                            oldFound = found;
+                            found = true;
+                        } else {
+                            found = false;
+                        }
+                        if (i === 0 && !found) {
+                            return false;
+                        }
+                        if (i !== 0 && found !== oldFound) {
+                            return false;
+                        }
+                    });
+                });
+                if (!found) {
+                    continue;
+                }
+            }
+
+            if (!item.method.includes("ALL") && !item.method.includes(method)) {
+                continue;
+            }
+
+            accessType = item.access;
+            break;
+        }
+        return accessType;
+    } catch {
+        return accessType;
+    }
+};
 
 export class Soope {
     private params = new Map();
@@ -117,14 +197,15 @@ export class Soope {
         this.setParam("PORT", 8000);
 
         app.use(express.static("public"));
-        app.use((req, res, next) => {
+        app.use(async (req, res, next) => {
             res.removeHeader("Server");
             res.removeHeader("Via");
             res.removeHeader("X-Powered-By");
 
+            req.getPagination = parsePagination.bind(req);
             res.sendPagination = sendPagination.bind(res);
 
-            parsePagination(req);
+            req.accessControl = await accessControl(this.root + "access.json", req.url, req.method);
 
             return next();
         });
@@ -565,14 +646,15 @@ export class Soope {
 export default Soope;
 declare global {
     namespace Express {
+        export interface Request {
+            getPagination: (this: Request, { page, perPage, orderBy }: Pagination) => void;
+            accessControl: string;
+        }
         export interface Response {
             sendPagination: (
                 this: Response,
                 { count, maxPage, currentPage }: { count: number; maxPage: number; currentPage: number }
             ) => void;
-        }
-        export interface Request {
-            pagination?: Pagination;
         }
     }
 }

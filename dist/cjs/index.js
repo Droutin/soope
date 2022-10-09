@@ -8,6 +8,7 @@ exports.Soope = exports.router = exports.app = exports.express = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 const error_stack_parser_1 = __importDefault(require("error-stack-parser"));
 const express_1 = __importDefault(require("express"));
+const promises_1 = require("fs/promises");
 const on_finished_1 = __importDefault(require("on-finished"));
 const on_headers_1 = __importDefault(require("on-headers"));
 const utils_1 = require("./utils");
@@ -40,31 +41,107 @@ const logAccess = (req, res, next) => {
     });
     return next();
 };
-const parsePagination = (req) => {
-    const data = {
-        page: req.get("X-Page"),
-        perPage: req.get("X-PerPage"),
-        orderBy: req.get("X-OrderBy"),
-    };
-    if (Object.values(data).filter(Boolean).length === 3) {
-        const pagination = {
-            page: parseInt(data.page),
-            perPage: parseInt(data.perPage),
-            orderBy: data.orderBy?.split(",").map((item) => {
-                const rule = item.split(":");
-                return {
-                    [rule[0]]: rule[1],
-                };
-            }) || {},
-        };
-        req.pagination = pagination;
+const isOrderByValid = (orderBy) => {
+    const rules = orderBy.split(",");
+    const matches = orderBy.match(/:/g);
+    if (matches && matches.length !== rules.length) {
+        throw new Error("Wrong orderBy rule joiner. Use ','");
     }
+    const valid = rules.every((item) => {
+        const rule = item.split(":");
+        if (rule.length !== 2) {
+            throw new Error("Wrong orderBy rule format. Use 'column:ASC|DESC'");
+        }
+        if (!rule[1].match(/(ASC|DESC)/)) {
+            throw new Error("Wrong orderBy rule sort. Use 'ASC|DESC'");
+        }
+        return true;
+    });
+    return valid;
 };
+function parsePagination({ page, perPage, orderBy }) {
+    const pagination = {
+        page: this.get("X-Page") ? parseInt(this.get("X-Page")) : page,
+        perPage: this.get("X-PerPage") ? parseInt(this.get("X-PerPage")) : perPage,
+    };
+    const stringOrderBy = this.get("X-OrderBy");
+    if (stringOrderBy && isOrderByValid(stringOrderBy)) {
+        const parsedOrderBy = {};
+        stringOrderBy.split(",").forEach((item) => {
+            const rule = item.split(":");
+            parsedOrderBy[rule[0]] = rule[1];
+        });
+        pagination.orderBy = parsedOrderBy;
+    }
+    else {
+        pagination.orderBy = orderBy;
+    }
+    return pagination;
+}
 function sendPagination({ count, maxPage, currentPage }) {
     this.setHeader("X-Count", count);
     this.setHeader("X-MaxPage", maxPage);
     this.setHeader("X-CurrentPage", currentPage);
 }
+const fixUri = (uri) => {
+    if (uri[0] !== "/") {
+        return "/" + uri;
+    }
+    return uri;
+};
+const accessControl = async (file, uri, method) => {
+    let accessType = "DEFAULT";
+    try {
+        const accessJson = (await (0, promises_1.readFile)(file)).toString();
+        const accessObj = JSON.parse(accessJson);
+        for (const item of accessObj) {
+            item.uri = Array.isArray(item.uri) ? item.uri.map((i) => fixUri(i)) : [fixUri(item.uri)];
+            item.method = Array.isArray(item.method)
+                ? item.method.map((i) => i.toUpperCase())
+                : [item.method.toUpperCase()];
+            if (!item.uri.includes(uri)) {
+                if (!item.uri.some((i) => i.endsWith("*"))) {
+                    continue;
+                }
+                const sUri = uri.split("/");
+                let found = false;
+                item.uri.forEach((x) => {
+                    x = x.slice(0, -2);
+                    const sx = x.split("/");
+                    found = false;
+                    let oldFound = false;
+                    sx.forEach((y, i) => {
+                        if (y === sUri[i]) {
+                            oldFound = found;
+                            found = true;
+                        }
+                        else {
+                            found = false;
+                        }
+                        if (i === 0 && !found) {
+                            return false;
+                        }
+                        if (i !== 0 && found !== oldFound) {
+                            return false;
+                        }
+                    });
+                });
+                if (!found) {
+                    continue;
+                }
+            }
+            if (!item.method.includes("ALL") && !item.method.includes(method)) {
+                continue;
+            }
+            accessType = item.access;
+            break;
+        }
+        return accessType;
+    }
+    catch {
+        return accessType;
+    }
+};
 class Soope {
     params = new Map();
     hooks = {
@@ -94,12 +171,13 @@ class Soope {
         this.root = root + "/";
         this.setParam("PORT", 8000);
         exports.app.use(exports.express.static("public"));
-        exports.app.use((req, res, next) => {
+        exports.app.use(async (req, res, next) => {
             res.removeHeader("Server");
             res.removeHeader("Via");
             res.removeHeader("X-Powered-By");
+            req.getPagination = parsePagination.bind(req);
             res.sendPagination = sendPagination.bind(res);
-            parsePagination(req);
+            req.accessControl = await accessControl(this.root + "access.json", req.url, req.method);
             return next();
         });
         if (process.env.LOG_LEVELS?.match(/(trace|all)/)) {

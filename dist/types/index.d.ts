@@ -152,15 +152,16 @@ export declare class Soope {
 export default Soope;
 declare global {
     namespace Express {
+        interface Request {
+            getPagination: (this: Request, { page, perPage, orderBy }: Pagination) => void;
+            accessControl: string;
+        }
         interface Response {
             sendPagination: (this: Response, { count, maxPage, currentPage }: {
                 count: number;
                 maxPage: number;
                 currentPage: number;
             }) => void;
-        }
-        interface Request {
-            pagination?: Pagination;
         }
     }
 }

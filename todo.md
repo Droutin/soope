@@ -4,6 +4,7 @@
 -   [x] Change @Route middleware to optional Array
 -   [x] Fix @Path and @CRUD
 -   [x] Paginator middleware req.paginator
--   [ ] Add access control
+-   [x] Change pagination parser
+-   [x] Add access control
 -   [ ] On start/construct of Logger remove old logs. Interval defined in ENV LOG_KEEP=number
 -   [ ] Final clean up/refactor before production version
