@@ -11,7 +11,8 @@ const getClassMethods = (toCheck) => {
         if (["constructor", "path", "crud"].includes(method)) {
             return false;
         }
-        if (typeof toCheck[method] !== "function") {
+        const handler = toCheck[method].fn || toCheck[method];
+        if (typeof handler !== "function") {
             return false;
         }
         return true;

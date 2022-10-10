@@ -515,6 +515,7 @@ class Soope {
         await this.autoImport(this.dirs.routes, (Route, className, filePath, dir) => {
             const route = new Route();
             const handlers = (0, utils_1.getClassMethods)(route);
+            console.log(handlers);
             const path = this.buildPath(dir, filePath, route?.path);
             if (route?.crud) {
                 (0, utils_1.entries)(this.cruds)
