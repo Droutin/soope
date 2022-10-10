@@ -5,7 +5,7 @@ import Express from "express";
 import { readFile } from "fs/promises";
 import onFinished from "on-finished";
 import onHeaders from "on-headers";
-import { entries, isString, Logger, scanDir } from "./utils";
+import { entries, getClassMethods, isString, Logger, scanDir } from "./utils";
 dotenv.config();
 /* export type { Request, Response } from "./types"; */
 export const express = Express;
@@ -508,7 +508,7 @@ export class Soope {
     async initRoutes() {
         await this.autoImport(this.dirs.routes, (Route, className, filePath, dir) => {
             const route = new Route();
-            const handlers = Object.getOwnPropertyNames(Route.prototype).filter((item) => !["constructor", "path", "crud"].includes(item));
+            const handlers = getClassMethods(route);
             const path = this.buildPath(dir, filePath, route?.path);
             if (route?.crud) {
                 entries(this.cruds)

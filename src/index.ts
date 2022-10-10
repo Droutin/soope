@@ -8,7 +8,7 @@ import type { IncomingMessage, ServerResponse } from "http";
 import onFinished from "on-finished";
 import onHeaders from "on-headers";
 import type { DecoratedRoute, DecoratedRouteHandler, Dirs, Hooks, Method, Middleware, Pagination } from "./types";
-import { entries, isString, Logger, scanDir } from "./utils";
+import { entries, getClassMethods, isString, Logger, scanDir } from "./utils";
 
 dotenv.config();
 
@@ -573,9 +573,7 @@ export class Soope {
     private async initRoutes() {
         await this.autoImport(this.dirs.routes, (Route, className, filePath, dir) => {
             const route = new Route() as DecoratedRoute;
-            const handlers = Object.getOwnPropertyNames(Route.prototype).filter(
-                (item) => !["constructor", "path", "crud"].includes(item)
-            );
+            const handlers = getClassMethods(route);
             const path = this.buildPath(dir, filePath, route?.path);
 
             if (route?.crud) {

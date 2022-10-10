@@ -514,7 +514,7 @@ class Soope {
     async initRoutes() {
         await this.autoImport(this.dirs.routes, (Route, className, filePath, dir) => {
             const route = new Route();
-            const handlers = Object.getOwnPropertyNames(Route.prototype).filter((item) => !["constructor", "path", "crud"].includes(item));
+            const handlers = (0, utils_1.getClassMethods)(route);
             const path = this.buildPath(dir, filePath, route?.path);
             if (route?.crud) {
                 (0, utils_1.entries)(this.cruds)
