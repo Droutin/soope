@@ -1,6 +1,6 @@
 import c from "ansi-colors";
-import { accessSync, constants } from "fs";
-import { writeFile } from "fs/promises";
+import { accessSync, constants, statSync, unlinkSync } from "fs";
+import { readdir, writeFile } from "fs/promises";
 
 export { create as c } from "ansi-colors";
 
@@ -21,8 +21,14 @@ export class Logger {
     private levels: Map<Level, boolean> = new Map();
     private canWrite = true;
     private dir = "logs/";
+    private keep = 7;
 
-    constructor({ namespace, dir, levels }: { namespace?: string; dir?: string; levels?: Levels } = {}) {
+    constructor({
+        namespace,
+        dir,
+        levels,
+        keep,
+    }: { namespace?: string; dir?: string; levels?: Levels; keep?: number } = {}) {
         if (namespace) {
             this.setNamespace(namespace);
         }
@@ -43,13 +49,39 @@ export class Logger {
             this.setDir(dir);
         }
 
+        if (process.env.LOG_KEEP) {
+            this.setKeep(parseInt(process.env.LOG_KEEP, 10));
+        }
+
+        if (keep) {
+            this.setKeep(keep);
+        }
+
         try {
             accessSync(this.dir, constants.R_OK | constants.W_OK);
             this.canWrite = true;
+            this.cleanlogs();
         } catch {
             this.canWrite = false;
             this.warn(`cant write log to folder ${this.dir}`);
         }
+    }
+    async cleanlogs() {
+        const files = await readdir(this.dir);
+        files
+            .map((file) => ({
+                name: file,
+                time: statSync(`${this.dir}/${file}`).mtime.getTime(),
+            }))
+            .sort((a, b) => b.time - a.time)
+            .forEach((file, index) => {
+                if (index >= this.keep) {
+                    unlinkSync(this.dir + file.name);
+                }
+            });
+    }
+    setKeep(keep: number) {
+        this.keep = keep;
     }
     palete() {
         const colors = ["black", "red", "green", "yellow", "blue", "magenta", "cyan", "white", "grey"];
@@ -156,10 +188,9 @@ export class Logger {
         const template = [datetime, level.toUpperCase(), this.namespace, "-", ...serialized];
 
         process.stdout.write(this.colorMessage(template));
-        const file = this.dir + this.getDate() + ".log";
 
         if (this.canWrite) {
-            writeFile(file, template.join(" ") + "\n", {
+            writeFile(this.dir + this.getDate() + ".log", template.join(" ") + "\n", {
                 flag: "a+",
             });
         }

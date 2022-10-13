@@ -1,130 +1,141 @@
-import type { Rules, Rule, DataType } from "../types";
 import {
-    isString,
-    isNumber,
-    isPositiveNumber,
-    isNegativeNumber,
-    isBoolean,
     isArray,
-    isObject,
-    isEmail,
+    isBoolean,
     isDate,
+    isEmail,
+    isNegativeNumber,
+    isNumber,
+    isObject,
+    isPositiveNumber,
+    isString,
 } from ".";
+import type { DataType, Rule, Rules } from "../types";
 
 type ErrorCode = "REQUIRED" | "WRONG_DATATYPE" | "UNKNOWN_DATATYPE";
 
-export const validator = <T extends Record<string, unknown>>(data: T, rules: Rules) => {
-    for (const [param, rule] of Object.entries(rules)) {
-        const item = data[param];
-        const dataType = getDatatType(rule);
-        if (dataType.endsWith("?") && (item === null || item === undefined)) {
-            continue;
-        }
-        if (item === null || item === undefined) {
-            throw new Error(getErrorMessage("REQUIRED", param));
-        }
+const conditions = (item: unknown, rule: DataType | Rule, param: string) => {
+    const dataType = getDatatType(rule);
+    if (dataType.endsWith("?") && (item === null || item === undefined)) {
+        return 0;
+    }
+    if (item === null || item === undefined) {
+        throw new Error(getErrorMessage("REQUIRED", param));
+    }
 
-        const errM = getErrorMessage("WRONG_DATATYPE", param, dataType);
-        switch (dataType.replace("?", "") as DataType) {
-            case "string":
-                if (!isString(item)) {
-                    throw new Error(errM);
-                }
-                break;
-            case "date":
-                if (!isString(item) || !isDate(item)) {
-                    throw new Error(errM);
-                }
-                break;
-            case "email":
-                if (!isString(item) || !isEmail(item)) {
-                    throw new Error(errM);
-                }
-                break;
-            case "number":
-                if (!isNumber(item)) {
-                    throw new Error(errM);
-                }
-                break;
-            case "number+":
-                if (!isNumber(item) || !isPositiveNumber(item)) {
-                    throw new Error(errM);
-                }
-                break;
-            case "number-":
-                if (!isNumber(item) || !isNegativeNumber(item)) {
-                    throw new Error(errM);
-                }
-                break;
-            case "boolean":
-                if (!isBoolean(item)) {
-                    throw new Error(errM);
-                }
-                break;
-            case "array":
-                if (!isArray(item)) {
-                    throw new Error(errM);
-                }
-                break;
-            case "object":
-                if (!isObject(item)) {
-                    throw new Error(errM);
-                }
-                if (isExtendedRule(rule) && rule.rules) {
-                    validator(item, rule.rules);
-                }
-                break;
-            case "string[]":
-                if (!isArray(item) || !item.every((val) => isString(val))) {
-                    throw new Error(errM);
-                }
-                break;
-            case "date[]":
-                if (!isArray(item) || !item.every((val) => isString(val) && isDate(val))) {
-                    throw new Error(errM);
-                }
-                break;
-            case "email[]":
-                if (!isArray(item) || !item.every((val) => isString(val) && isEmail(val))) {
-                    throw new Error(errM);
-                }
-                break;
-            case "number[]":
-                if (!isArray(item) || !item.every((val) => isNumber(val))) {
-                    throw new Error(errM);
-                }
-                break;
-            case "number+[]":
-                if (!isArray(item) || !item.every((val) => isNumber(val) && isPositiveNumber(val))) {
-                    throw new Error(errM);
-                }
-                break;
-            case "number-[]":
-                if (!isArray(item) || !item.every((val) => isNumber(val) && isNegativeNumber(val))) {
-                    throw new Error(errM);
-                }
-                break;
-            case "boolean[]":
-                if (!isArray(item) || !item.every((val) => isBoolean(val))) {
-                    throw new Error(errM);
-                }
-                break;
-            case "object[]":
-                if (
-                    !isArray(item) ||
-                    !item.every((val) => {
-                        if (isExtendedRule(rule) && rule.rules) {
-                            validator(val as Record<string, unknown>, rule.rules);
-                        }
-                        return isObject(val);
-                    })
-                ) {
-                    throw new Error(errM);
-                }
-                break;
-            default:
-                throw new Error(getErrorMessage("UNKNOWN_DATATYPE", param, typeof item));
+    const errM = getErrorMessage("WRONG_DATATYPE", param, dataType);
+    switch (dataType.replace("?", "") as DataType) {
+        case "string":
+            if (!isString(item)) {
+                throw new Error(errM);
+            }
+            break;
+        case "date":
+            if (!isString(item) || !isDate(item)) {
+                throw new Error(errM);
+            }
+            break;
+        case "email":
+            if (!isString(item) || !isEmail(item)) {
+                throw new Error(errM);
+            }
+            break;
+        case "number":
+            if (!isNumber(item)) {
+                throw new Error(errM);
+            }
+            break;
+        case "number+":
+            if (!isNumber(item) || !isPositiveNumber(item)) {
+                throw new Error(errM);
+            }
+            break;
+        case "number-":
+            if (!isNumber(item) || !isNegativeNumber(item)) {
+                throw new Error(errM);
+            }
+            break;
+        case "boolean":
+            if (!isBoolean(item)) {
+                throw new Error(errM);
+            }
+            break;
+        case "array":
+            if (!isArray(item)) {
+                throw new Error(errM);
+            }
+            break;
+        case "object":
+            if (!isObject(item)) {
+                throw new Error(errM);
+            }
+            if (isExtendedRule(rule) && rule.rules) {
+                validator(item, rule.rules);
+            }
+            break;
+        case "string[]":
+            if (!isArray(item) || !item.every((val) => isString(val))) {
+                throw new Error(errM);
+            }
+            break;
+        case "date[]":
+            if (!isArray(item) || !item.every((val) => isString(val) && isDate(val))) {
+                throw new Error(errM);
+            }
+            break;
+        case "email[]":
+            if (!isArray(item) || !item.every((val) => isString(val) && isEmail(val))) {
+                throw new Error(errM);
+            }
+            break;
+        case "number[]":
+            if (!isArray(item) || !item.every((val) => isNumber(val))) {
+                throw new Error(errM);
+            }
+            break;
+        case "number+[]":
+            if (!isArray(item) || !item.every((val) => isNumber(val) && isPositiveNumber(val))) {
+                throw new Error(errM);
+            }
+            break;
+        case "number-[]":
+            if (!isArray(item) || !item.every((val) => isNumber(val) && isNegativeNumber(val))) {
+                throw new Error(errM);
+            }
+            break;
+        case "boolean[]":
+            if (!isArray(item) || !item.every((val) => isBoolean(val))) {
+                throw new Error(errM);
+            }
+            break;
+        case "object[]":
+            if (
+                !isArray(item) ||
+                !item.every((val) => {
+                    if (isExtendedRule(rule) && rule.rules) {
+                        validator(val as Record<string, unknown>, rule.rules);
+                    }
+                    return isObject(val);
+                })
+            ) {
+                throw new Error(errM);
+            }
+            break;
+        default:
+            throw new Error(getErrorMessage("UNKNOWN_DATATYPE", param, typeof item));
+    }
+};
+
+export const validator = <T extends Record<string, unknown>>(data: T, rules: Rules) => {
+    const rulesEntries = Object.entries(rules);
+    if (rulesEntries.find((item) => item[0] === "$PROP")) {
+        for (const item of Object.values(data)) {
+            conditions(item, rulesEntries[0][1], rulesEntries[0][0]);
         }
+        return data;
+    }
+
+    for (const [param, rule] of rulesEntries) {
+        conditions(data[param], rule, param);
     }
     return data;
 };

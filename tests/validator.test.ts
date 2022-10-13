@@ -25,6 +25,9 @@ describe("Validator functionality", () => {
             ],
             createdAt: "2022-10-05 12:00:00",
             createdBy: "roman.vasek@enimo.sk",
+            tables: {
+                "0001": true,
+            },
         };
         const data = validator(testCase, {
             name: "string",
@@ -46,6 +49,12 @@ describe("Validator functionality", () => {
             },
             createdAt: "date",
             createdBy: "email",
+            tables: {
+                dataType: "object",
+                rules: {
+                    $PROP: "boolean",
+                },
+            },
         });
         expect(data).toBe(testCase);
     });

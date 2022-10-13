@@ -6,11 +6,15 @@ export declare class Logger {
     private levels;
     private canWrite;
     private dir;
-    constructor({ namespace, dir, levels }?: {
+    private keep;
+    constructor({ namespace, dir, levels, keep, }?: {
         namespace?: string;
         dir?: string;
         levels?: Levels;
+        keep?: number;
     });
+    cleanlogs(): Promise<void>;
+    setKeep(keep: number): void;
     palete(): void;
     private setDir;
     getDir(): string;
